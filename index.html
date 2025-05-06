@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loan Bubble Graph - Corrected with Dense Overlaps</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .chart-container {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #ccc;
+            position: relative;
+        }
+        .tooltip {
+            position: absolute;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .chart-wrapper {
+            position: relative;
+            width: 800px;
+            margin: 20px auto;
+        }
+        canvas {
+            background: #f0f0f0;
+            display: block;
+            margin: 20px auto;
+            border: 1px solid #ccc;
+            position: relative;
+            z-index: 1;
+        }
+        #tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 5px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            visibility: hidden;
+            z-index: 2;
+        }
+        .axis-label {
+            position: absolute;
+            font-size: 14px;
+            color: #333;
+        }
+        .x-axis-label {
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .y-axis-label {
+            left: -40px;
+            top: 50%;
+            transform: translateY(-50%) rotate(-90deg);
+        }
+        .wallet-selector {
+            margin: 20px auto;
+            display: block;
+            padding: 8px;
+            width: 300px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <select id="walletSelect" class="wallet-selector">
+        <option value="">Select a wallet...</option>
+    </select>
+    <div class="chart-wrapper">
+        <canvas id="canvas" width="800" height="600"></canvas>
+        <div id="tooltip"></div>
+        <div class="axis-label x-axis-label">Monthly Repayment ($)</div>
+        <div class="axis-label y-axis-label">APR (%)</div>
+    </div>
+    <script>
+    // --- Config ---
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const tooltip = document.getElementById('tooltip');
+
+    const WIDTH = canvas.width;
+    const HEIGHT = canvas.height;
+
+    const NUM_BUBBLES = 30;
+
+    // Force scaling constants
+    const BASE_VELOCITY = 0.2;                    // Base velocity for initial bubble movement
+    const VELOCITY_POWER = 0.9;                   // How aggressively velocity scales with cluster size (higher = more aggressive)
+    const OVERLAP_SCALE = 0.3;                    // How strongly overlapping bubbles push apart (higher = stronger push)
+    const CLUSTER_SCALE_DIVISOR = 3;              // How much cluster size affects spring force (lower = stronger effect)
+    const OVERLAP_FORCE_MULTIPLIER = 5;           // How much stronger the force is when bubbles overlap (higher = stronger)
+    const BASE_REPULSION = 0.0065;                 // Base strength of repulsion between bubbles (higher = stronger repulsion)
+    const REPULSION_POWER = 0.3;                  // How aggressively repulsion scales with cluster size (higher = more aggressive)
+    const OUTWARD_FORCE_DIVISOR = 3;              // How much cluster size affects outward force (lower = stronger effect)
+    const OUTWARD_FORCE_POWER = 0.9;              // How aggressively outward force scales with cluster size (higher = more aggressive)
+
+    // Axis simulation
+    const repaymentBands = [500, 1000, 2000, 5000]; // Common repayments
+    const minAPR = 3; // %
+    const maxAPR = 15; // %
+
+    const minLoanAmount = 5000;  // $
+    const maxLoanAmount = 100000; // $
+
+    const minRadius = 5;
+    const maxRadius = 30;
+
+    // Physics settings
+    const SPRING_CONSTANT = 0.008;
+    const DAMPING = 0.75;
+    const OUTWARD_FORCE = 0.004;
+    const MAX_FRAMES = 60;
+    const REVERT_DELAY = 2000;
+    const REVERT_SPEED = 0.15;
+
+    const allBubbles = [];
+    const clusters = [];
+    const singleBubbles = [];
+    let mouseX = 0;
+    let mouseY = 0;
+
+    // Wallet addresses
+    const WALLETS = [
+        "0x148216a1800ab3d71668b4126b4244a9a909955f",
+        "0x2f44fb58135ae5d3793803c73d471c7cde4bb774",
+        "0x7a65cd0ad11e7329f534b5b65113997cf75e3546",
+        "0xe90f08ddfa43c52149e4049d09c02919c797ed2a",
+        "0x94de7e2c73529ebf3206aa3459e699fbcdfcd49b",
+        "0x1e8fd4c82adae5aeeafca2df14252d1610322179",
+        "0xd876f7215aaa80272b52eccdbf30e949eec13292",
+        "0xcffc336e6d019c1af58257a0b10bf2146a3f42a4",
+        "0x6358869f958ecdd132f5da7937264de46e54483c",
+        "0x1da5331994e781ab0e2af9f85bfce2037a514170"
+    ];
+
+    // Populate wallet dropdown
+    const walletSelect = document.getElementById('walletSelect');
+    WALLETS.forEach((wallet, index) => {
+        const option = document.createElement('option');
+        option.value = wallet;
+        option.textContent = `Wallet ${index + 1}`;
+        walletSelect.appendChild(option);
+    });
+    // Set default wallet (index 7 is wallet 8)
+    walletSelect.value = WALLETS[7];
+    // Trigger initial load
+    fetchLoanData(WALLETS[7]).then(data => {
+        if (data && data.data && data.data.length > 0) {
+            useLoanDataForBubbles(data.data);
+        }
+    });
+
+    // API call function
+    async function fetchLoanData(walletAddress) {
+        try {
+            const response = await fetch(`https://theta-sdk-api.nftfi.com/data/v0/pipes/loans_due_endpoint.json?daysFromNow=30&page_size=1000000&borrowerAddress=${walletAddress}&page=0`);
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Error fetching loan data:', error);
+            return null;
+        }
+    }
+
+    // --- Create Loan Bubble from API Data ---
+    function createLoanBubbleFromAPI(loan, minAPR, maxAPR, minDue, maxDue, minUSD, maxUSD) {
+        // Calculate base position
+        let x = WIDTH * (loan.apr - minAPR) / ((maxAPR - minAPR) || 1);
+        let y = HEIGHT * (new Date(loan.dueTime).getTime() - minDue) / ((maxDue - minDue) || 1);
+        
+        // Add tiny random offset (5-10 pixels)
+        x += (Math.random() - 0.5) * 10;
+        y += (Math.random() - 0.5) * 10;
+        
+        // Clamp to canvas
+        x = Math.max(20, Math.min(WIDTH - 20, x));
+        y = Math.max(20, Math.min(HEIGHT - 20, y));
+        
+        // Calculate radius
+        let r = 10 + ((loan.principalAmountUSD - minUSD) / ((maxUSD - minUSD) || 1)) * (40 - 10);
+        r = Math.max(10, Math.min(40, r));
+        
+        return {
+            x, y, r,
+            initialX: x, initialY: y,
+            // Add tiny random initial velocity
+            vx: (Math.random() - 0.5) * 0.1,
+            vy: (Math.random() - 0.5) * 0.1,
+            repayment: loan.maximumRepaymentAmountUSD,
+            apr: loan.apr,
+            loanAmount: loan.principalAmountUSD,
+            showTooltip: true,
+            visited: false
+        };
+    }
+
+    // --- Use loan data for bubbles ---
+    function useLoanDataForBubbles(loans) {
+        allBubbles.length = 0;
+        clusters.length = 0;
+        singleBubbles.length = 0;
+
+        if (!loans || loans.length === 0) return;
+
+        // Calculate min/max for mapping
+        const minAPR = Math.min(...loans.map(l => l.apr));
+        const maxAPR = Math.max(...loans.map(l => l.apr));
+        const minDue = Math.min(...loans.map(l => new Date(l.dueTime).getTime()));
+        const maxDue = Math.max(...loans.map(l => new Date(l.dueTime).getTime()));
+        const minUSD = Math.min(...loans.map(l => l.principalAmountUSD));
+        const maxUSD = Math.max(...loans.map(l => l.principalAmountUSD));
+
+        for (const loan of loans) {
+            allBubbles.push(createLoanBubbleFromAPI(loan, minAPR, maxAPR, minDue, maxDue, minUSD, maxUSD));
+        }
+        findClusters(allBubbles);
+    }
+
+    // --- Detect Overlaps and Form Clusters ---
+    function bubblesOverlap(b1, b2) {
+        const dx = b1.x - b2.x;
+        const dy = b1.y - b2.y;
+        const dist = Math.hypot(dx, dy);
+        return dist < (b1.r + b2.r) * 0.98;
+    }
+
+    function findClusters(bubbles) {
+        const visited = new Set();
+        const clusterMap = new Map();
+        
+        // First pass: find all clusters and their sizes
+        for (const b of bubbles) {
+            if (visited.has(b)) continue;
+
+            const cluster = [];
+            const queue = [b];
+            visited.add(b);
+
+            while (queue.length > 0) {
+                const current = queue.pop();
+                cluster.push(current);
+
+                for (const other of bubbles) {
+                    if (!visited.has(other) && bubblesOverlap(current, other)) {
+                        visited.add(other);
+                        queue.push(other);
+                    }
+                }
+            }
+
+            const clusterSize = cluster.length;
+            for (const bubble of cluster) {
+                clusterMap.set(bubble, clusterSize);
+            }
+
+            if (clusterSize > 1) {
+                clusters.push({ 
+                    bubbles: cluster, 
+                    state: "idle", 
+                    hovering: false, 
+                    revertTimer: null, 
+                    frameCount: 0,
+                    size: clusterSize
+                });
+            } else {
+                singleBubbles.push(cluster[0]);
+            }
+        }
+
+        // Second pass: update initial velocities based on cluster size
+        for (const b of bubbles) {
+            const clusterSize = clusterMap.get(b) || 1;
+            const velocityScale = Math.pow(clusterSize, VELOCITY_POWER);
+            const angle = Math.random() * Math.PI * 2;
+            
+            b.vx = Math.cos(angle) * BASE_VELOCITY * velocityScale;
+            b.vy = Math.sin(angle) * BASE_VELOCITY * velocityScale;
+        }
+    }
+
+    // --- Physics Functions ---
+    function applySpringForces(cluster) {
+        const bubbles = cluster.bubbles;
+        const clusterSize = cluster.size;
+        
+        // Calculate overlap counts for each bubble
+        const overlapCounts = new Map();
+        for (let i = 0; i < bubbles.length; i++) {
+            let overlaps = 0;
+            for (let j = 0; j < bubbles.length; j++) {
+                if (i !== j && bubblesOverlap(bubbles[i], bubbles[j])) {
+                    overlaps++;
+                }
+            }
+            overlapCounts.set(bubbles[i], overlaps);
+        }
+
+        // Apply forces between all pairs
+        for (let i = 0; i < bubbles.length; i++) {
+            for (let j = i + 1; j < bubbles.length; j++) {
+                const ci = bubbles[i];
+                const cj = bubbles[j];
+                
+                const dx = cj.x - ci.x;
+                const dy = cj.y - ci.y;
+                const dist = Math.hypot(dx, dy) || 1e-6;
+                
+                const idealDist = ci.r + cj.r;
+                const displacement = dist - idealDist;
+                
+                // More aggressive scaling for overlaps and cluster size
+                const overlapScale = 1 + (overlapCounts.get(ci) + overlapCounts.get(cj)) * OVERLAP_SCALE;
+                const clusterScale = 1 + (clusterSize / CLUSTER_SCALE_DIVISOR);
+                const springVariation = 1 + (Math.random() - 0.5) * 0.1;
+                let force = SPRING_CONSTANT * displacement * overlapScale * clusterScale * springVariation;
+                
+                if (displacement < 0) {
+                    force *= OVERLAP_FORCE_MULTIPLIER;
+                }
+                
+                const nx = dx / dist;
+                const ny = dy / dist;
+                
+                ci.vx += nx * force;
+                ci.vy += ny * force;
+                cj.vx -= nx * force;
+                cj.vy -= ny * force;
+            }
+        }
+
+        // Stronger repulsion force for larger clusters
+        const repulsionForce = BASE_REPULSION * Math.pow(clusterSize, REPULSION_POWER);
+        for (let i = 0; i < bubbles.length; i++) {
+            for (let j = i + 1; j < bubbles.length; j++) {
+                const ci = bubbles[i];
+                const cj = bubbles[j];
+                
+                const dx = cj.x - ci.x;
+                const dy = cj.y - ci.y;
+                const dist = Math.hypot(dx, dy) || 1e-6;
+                
+                const nx = dx / dist;
+                const ny = dy / dist;
+                
+                ci.vx -= nx * repulsionForce;
+                ci.vy -= ny * repulsionForce;
+                cj.vx += nx * repulsionForce;
+                cj.vy += ny * repulsionForce;
+            }
+        }
+    }
+
+    function updateCluster(cluster) {
+        const bubbles = cluster.bubbles;
+        for (const c of bubbles) {
+            c.x += c.vx;
+            c.y += c.vy;
+            c.vx *= DAMPING;
+            c.vy *= DAMPING;
+        }
+    }
+
+    function applyOutwardForce(cluster) {
+        const centerX = WIDTH / 2;
+        const centerY = HEIGHT / 2;
+        const clusterSize = cluster.size;
+        const outwardForce = OUTWARD_FORCE * (1 + Math.pow(clusterSize, OUTWARD_FORCE_POWER) / OUTWARD_FORCE_DIVISOR);
+        
+        for (const c of cluster.bubbles) {
+            const dx = c.x - centerX;
+            const dy = c.y - centerY;
+            const dist = Math.hypot(dx, dy) || 1e-6;
+            c.vx += (dx / dist) * outwardForce;
+            c.vy += (dy / dist) * outwardForce;
+        }
+    }
+
+    function revertClusterSmoothly(cluster) {
+        let allClose = true;
+        for (const b of cluster.bubbles) {
+            b.x += (b.initialX - b.x) * REVERT_SPEED;
+            b.y += (b.initialY - b.y) * REVERT_SPEED;
+
+            const dx = b.x - b.initialX;
+            const dy = b.y - b.initialY;
+            if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+                allClose = false;
+            }
+        }
+
+        if (allClose) {
+            for (const b of cluster.bubbles) {
+                b.x = b.initialX;
+                b.y = b.initialY;
+                b.vx = 0;
+                b.vy = 0;
+                b.showTooltip = false;
+            }
+            cluster.state = "idle";
+            cluster.frameCount = 0;
+        }
+    }
+
+    // --- Draw Axes ---
+    function drawAxes() {
+        ctx.save();
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 1;
+        
+        // Draw X axis
+        ctx.beginPath();
+        ctx.moveTo(0, HEIGHT);
+        ctx.lineTo(WIDTH, HEIGHT);
+        ctx.stroke();
+        
+        // Draw Y axis
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(0, HEIGHT);
+        ctx.stroke();
+        
+        // Draw X axis ticks and labels
+        const xTicks = [0, 2000, 4000, 6000];
+        xTicks.forEach(tick => {
+            const x = (tick / 6000) * WIDTH;
+            ctx.beginPath();
+            ctx.moveTo(x, HEIGHT);
+            ctx.lineTo(x, HEIGHT + 5);
+            ctx.stroke();
+            ctx.fillStyle = '#333';
+            ctx.textAlign = 'center';
+            ctx.fillText(`$${tick}`, x, HEIGHT + 20);
+        });
+        
+        // Draw Y axis ticks and labels
+        const yTicks = [3, 6, 9, 12, 15];
+        yTicks.forEach(tick => {
+            const y = HEIGHT - ((tick - minAPR) / (maxAPR - minAPR)) * HEIGHT;
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(-5, y);
+            ctx.stroke();
+            ctx.fillStyle = '#333';
+            ctx.textAlign = 'right';
+            ctx.fillText(`${tick}%`, -10, y + 4);
+        });
+        
+        ctx.restore();
+    }
+
+    // --- Draw Function ---
+    function draw() {
+        ctx.clearRect(0, 0, WIDTH, HEIGHT);
+        
+        // Draw axes first
+        drawAxes();
+        
+        // Draw bubbles
+        for (const b of singleBubbles) {
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(100, 200, 255, 0.6)';
+            ctx.fill();
+            ctx.strokeStyle = 'black';
+            ctx.stroke();
+        }
+
+        for (const cluster of clusters) {
+            for (const b of cluster.bubbles) {
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 150, 150, 0.6)';
+                ctx.fill();
+                ctx.strokeStyle = 'black';
+                ctx.stroke();
+            }
+        }
+    }
+
+    // --- Mouse Handling ---
+    canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        mouseX = e.clientX - rect.left;
+        mouseY = e.clientY - rect.top;
+
+        for (const cluster of clusters) {
+            let hovering = false;
+            for (const b of cluster.bubbles) {
+                const dx = mouseX - b.x;
+                const dy = mouseY - b.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist < b.r) {
+                    hovering = true;
+                    break;
+                }
+            }
+
+            if (hovering) {
+                cluster.hovering = true;
+                if (cluster.state === "idle") {
+                    cluster.state = "expanding";
+                    applyOutwardForce(cluster);
+                    cluster.frameCount = 0;
+                }
+                if (cluster.revertTimer) {
+                    clearTimeout(cluster.revertTimer);
+                    cluster.revertTimer = null;
+                }
+            } else {
+                if (cluster.hovering) {
+                    cluster.hovering = false;
+                    if (!cluster.revertTimer) {
+                        cluster.revertTimer = setTimeout(() => {
+                            if (!cluster.hovering) {
+                                cluster.state = "reverting";
+                            }
+                        }, REVERT_DELAY);
+                    }
+                }
+            }
+        }
+    });
+
+    // --- Tooltip update ---
+    function updateTooltip() {
+        let closest = null;
+        let closestDist = Infinity;
+
+        for (const b of singleBubbles) {
+            const dx = mouseX - b.x;
+            const dy = mouseY - b.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < b.r && dist < closestDist && b.showTooltip) {
+                closest = b;
+                closestDist = dist;
+            }
+        }
+
+        for (const cluster of clusters) {
+            for (const b of cluster.bubbles) {
+                const dx = mouseX - b.x;
+                const dy = mouseY - b.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist < b.r && dist < closestDist && b.showTooltip) {
+                    closest = b;
+                    closestDist = dist;
+                }
+            }
+        }
+
+        if (closest) {
+            tooltip.style.left = (closest.x + canvas.offsetLeft + 10) + "px";
+            tooltip.style.top = (closest.y + canvas.offsetTop - 20) + "px";
+            tooltip.innerText = `APR: ${closest.apr.toFixed(2)}%\nRepayment: $${closest.repayment.toFixed(0)}\nLoan: $${closest.loanAmount.toFixed(0)}`;
+            tooltip.style.visibility = "visible";
+        } else {
+            tooltip.style.visibility = "hidden";
+        }
+    }
+
+    // --- Update wallet selection event to use new bubbles ---
+    walletSelect.addEventListener('change', async (e) => {
+        const selectedWallet = e.target.value;
+        if (selectedWallet) {
+            const data = await fetchLoanData(selectedWallet);
+            if (data && data.data && data.data.length > 0) {
+                useLoanDataForBubbles(data.data);
+            }
+        }
+    });
+
+    // Animation loop
+    function animate() {
+        for (const cluster of clusters) {
+            if (cluster.state === "expanding") {
+                applySpringForces(cluster);
+                updateCluster(cluster);
+                cluster.frameCount++;
+                if (cluster.frameCount >= MAX_FRAMES) {
+                    cluster.state = "expanded";
+                    for (const b of cluster.bubbles) {
+                        b.showTooltip = true;
+                    }
+                }
+            } else if (cluster.state === "reverting") {
+                revertClusterSmoothly(cluster);
+            }
+        }
+
+        draw();
+        updateTooltip();
+        requestAnimationFrame(animate);
+    }
+
+    // Start animation
+    animate();
+    </script>
+</body>
+</html> 
