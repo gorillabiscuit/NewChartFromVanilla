@@ -14,7 +14,7 @@
         .chart-container {
             width: 100%;
             height: 600px;
-            border: 1px solid #ccc;
+            border: none;
             position: relative;
         }
         .tooltip {
@@ -36,7 +36,7 @@
             background: #f0f0f0;
             display: block;
             margin: 20px auto;
-            border: 1px solid #ccc;
+            border: none;
             position: relative;
             z-index: 1;
         }
@@ -82,7 +82,6 @@
     <div class="chart-wrapper">
         <canvas id="canvas" width="800" height="650"></canvas>
         <div id="tooltip"></div>
-        <div class="axis-label y-axis-label">APR (%)</div>
     </div>
     <script>
     // --- Config ---
@@ -93,7 +92,8 @@
     const WIDTH = canvas.width;
     const HEIGHT = canvas.height;
     const CHART_HEIGHT = 600; // Height of the plot area
-    const CHART_PADDING_X = 40; // Horizontal padding for axis labels
+    const CHART_PADDING_X = 40; // Horizontal padding for axis labels and left margin for y-axis labels
+    const CHART_PADDING_TOP = 20; // Top padding for APR labels
 
     const NUM_BUBBLES = 30;
 
@@ -200,7 +200,7 @@
     function createLoanBubbleFromAPI(loan, minAPR, maxAPR, minDue, maxDue, minUSD, maxUSD) {
         // Calculate base position with padding
         let x = CHART_PADDING_X + (WIDTH - 2 * CHART_PADDING_X) * (loan.apr - minAPR) / ((maxAPR - minAPR) || 1);
-        let y = CHART_HEIGHT * (new Date(loan.dueTime).getTime() - minDue) / ((maxDue - minDue) || 1);
+        let y = CHART_PADDING_TOP + (CHART_HEIGHT - CHART_PADDING_TOP) * (new Date(loan.dueTime).getTime() - minDue) / ((maxDue - minDue) || 1);
         
         // Add tiny random offset (5-10 pixels)
         x += (Math.random() - 0.5) * 10;
@@ -213,8 +213,8 @@
         // Clamp to canvas with bubble radius consideration
         const minX = CHART_PADDING_X + r * BUBBLE_PADDING_FACTOR;
         const maxX = WIDTH - CHART_PADDING_X - (r * BUBBLE_PADDING_FACTOR);
-        const minY = CHART_PADDING_X + r * BUBBLE_PADDING_FACTOR;
-        const maxY = CHART_HEIGHT - CHART_PADDING_X - (r * BUBBLE_PADDING_FACTOR);
+        const minY = CHART_PADDING_TOP + r * BUBBLE_PADDING_FACTOR;
+        const maxY = CHART_HEIGHT - (r * BUBBLE_PADDING_FACTOR);
         
         x = Math.max(minX, Math.min(maxX, x));
         y = Math.max(minY, Math.min(maxY, y));
@@ -522,36 +522,62 @@
         return {ticks, format};
     }
 
+    // --- D3-inspired linear tick generator for APR ---
+    function niceLinearTicks(min, max, maxCount) {
+        // D3-like nice ticks for linear scale
+        const span = max - min;
+        if (span === 0) return [min];
+        const step = Math.pow(10, Math.floor(Math.log10(span / maxCount)));
+        const err = maxCount / (span / step);
+        let niceStep = step;
+        if (err <= 0.15) niceStep *= 10;
+        else if (err <= 0.35) niceStep *= 5;
+        else if (err <= 0.75) niceStep *= 2;
+        const niceMin = Math.floor(min / niceStep) * niceStep;
+        const niceMax = Math.ceil(max / niceStep) * niceStep;
+        const ticks = [];
+        for (let v = niceMin; v <= niceMax + 0.5 * niceStep; v += niceStep) {
+            ticks.push(Number(v.toFixed(6)));
+        }
+        return ticks;
+    }
+
     // --- Draw Axes ---
     function drawAxes() {
         ctx.save();
         
-        // Draw X axis
-        ctx.strokeStyle = AXIS_LINE_COLOR;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(0, HEIGHT);
-        ctx.lineTo(WIDTH, HEIGHT);
-        ctx.stroke();
-        
-        // Draw Y axis
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(0, HEIGHT);
-        ctx.stroke();
-        
-        // Draw Y axis ticks and labels (APR)
-        const yTicks = [3, 6, 9, 12, 15];
-        yTicks.forEach(tick => {
-            const y = HEIGHT - ((tick - 3) / (15 - 3)) * HEIGHT;
-            ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(-TICK_LENGTH, y);
-            ctx.stroke();
-            ctx.fillStyle = '#333';
-            ctx.textAlign = 'right';
-            ctx.fillText(`${tick}%`, -TICK_PADDING, y + 4);
-        });
+        // Draw Y axis APR ticks, grid lines, and labels (D3-inspired)
+        if (allBubbles.length > 0) {
+            // Use the same min/max APR as for bubble mapping
+            const loans = allBubbles;
+            const minAPR = Math.min(...loans.map(l => l.apr));
+            const maxAPR = Math.max(...loans.map(l => l.apr));
+            let aprTicks = niceLinearTicks(minAPR, maxAPR, 8);
+            // Remove the first tick to avoid overlap with the first date
+            if (aprTicks.length > 1) aprTicks = aprTicks.slice(1);
+            aprTicks.forEach(tick => {
+                // Map APR to y position
+                const y = CHART_PADDING_TOP + (CHART_HEIGHT - CHART_PADDING_TOP) * (1 - (tick - minAPR) / ((maxAPR - minAPR) || 1));
+                // Draw grid line
+                ctx.strokeStyle = GRID_LINE_COLOR;
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(WIDTH, y);
+                ctx.stroke();
+                // Draw tick in left margin
+                ctx.strokeStyle = AXIS_LINE_COLOR;
+                ctx.beginPath();
+                ctx.moveTo(CHART_PADDING_X - TICK_LENGTH, y);
+                ctx.lineTo(CHART_PADDING_X, y);
+                ctx.stroke();
+                // Draw label in left margin
+                ctx.fillStyle = '#333';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.font = '13px Arial';
+                ctx.fillText(tick % 1 === 0 ? `${tick}` : tick.toFixed(2), CHART_PADDING_X - TICK_LENGTH - TICK_PADDING, y);
+            });
+        }
         
         // Draw X axis date ticks and grid lines (D3-inspired)
         if (allBubbles.length > 0 && PADDED_MIN_DATE !== null && PADDED_MAX_DATE !== null) {
@@ -564,7 +590,7 @@
                 // Draw grid line
                 ctx.strokeStyle = GRID_LINE_COLOR;
                 ctx.beginPath();
-                ctx.moveTo(x, 0);
+                ctx.moveTo(x, CHART_PADDING_TOP);
                 ctx.lineTo(x, CHART_HEIGHT);
                 ctx.stroke();
                 // Draw tick
@@ -588,12 +614,18 @@
     function draw() {
         // Visually separate plot and label areas
         ctx.clearRect(0, 0, WIDTH, HEIGHT);
+        // Draw top margin (white for top padding)
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, WIDTH, CHART_PADDING_TOP);
+        // Draw left margin (white for y-axis labels)
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, CHART_PADDING_TOP, CHART_PADDING_X, CHART_HEIGHT - CHART_PADDING_TOP);
         // Draw label area (white)
         ctx.fillStyle = '#fff';
         ctx.fillRect(0, CHART_HEIGHT, WIDTH, HEIGHT - CHART_HEIGHT);
-        // Draw plot area (grey)
+        // Draw plot area (grey), starting exactly at the y-axis line
         ctx.fillStyle = '#f0f0f0';
-        ctx.fillRect(0, 0, WIDTH, CHART_HEIGHT);
+        ctx.fillRect(CHART_PADDING_X - TICK_LENGTH, CHART_PADDING_TOP, WIDTH - (CHART_PADDING_X - TICK_LENGTH), CHART_HEIGHT - CHART_PADDING_TOP);
         // Draw axes and bubbles
         drawAxes();
         for (const b of singleBubbles) {
