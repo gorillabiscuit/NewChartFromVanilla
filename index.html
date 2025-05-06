@@ -28,9 +28,12 @@
             transition: opacity 0.2s;
         }
         .chart-wrapper {
-            position: relative;
-            width: 800px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            width: 100%;
             margin: 20px auto;
+            position: relative;
         }
         canvas {
             background: #f0f0f0;
@@ -84,58 +87,43 @@
         <div id="tooltip"></div>
     </div>
     <script>
-    // --- Config ---
+    // --- DOM and Canvas Setup ---
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const tooltip = document.getElementById('tooltip');
 
-    const WIDTH = canvas.width;
-    const HEIGHT = canvas.height;
-    const CHART_HEIGHT = 600; // Height of the plot area
-    const CHART_PADDING_X = 40; // Horizontal padding for axis labels and left margin for y-axis labels
-    const CHART_PADDING_TOP = 20; // Top padding for APR labels
+    // --- Layout Constants ---
+    let WIDTH = canvas.width;
+    let HEIGHT = canvas.height;
+    let CHART_HEIGHT = Math.round(HEIGHT * 0.92); // Plot area is 92% of canvas height
+    let CHART_PADDING_X = Math.round(WIDTH * 0.05); // 5% horizontal padding
+    let CHART_PADDING_TOP = Math.round(HEIGHT * 0.03); // 3% top padding
 
-    const NUM_BUBBLES = 30;
-
-    // Date formatting and axis constants
-    const DATE_FORMAT = {
-        month: 'short',
-        day: 'numeric'
-    };
+    // --- Axis and Tick Constants ---
+    const DATE_FORMAT = { month: 'short', day: 'numeric' };
     const GRID_LINE_COLOR = '#ddd';
     const AXIS_LINE_COLOR = '#666';
     const TICK_LENGTH = 5;
     const TICK_PADDING = 5;
     const DATE_TICK_COUNT = 12; // Number of date ticks to show
 
-    // Padding constants
+    // --- Data Padding and Bubble Sizing ---
     const MIN_PADDING_PERCENT = 0.05;  // Minimum 5% padding
     const MAX_PADDING_PERCENT = 0.1;   // Maximum 10% padding
     const BUBBLE_PADDING_FACTOR = 1.2; // Add 20% extra space for bubble radius
 
-    // Force scaling constants
+    // --- Physics and Force Constants ---
     const BASE_VELOCITY = 0.2;                    // Base velocity for initial bubble movement
-    const VELOCITY_POWER = 0.9;                   // How aggressively velocity scales with cluster size (higher = more aggressive)
-    const OVERLAP_SCALE = 0.3;                    // How strongly overlapping bubbles push apart (higher = stronger push)
-    const CLUSTER_SCALE_DIVISOR = 3;              // How much cluster size affects spring force (lower = stronger effect)
-    const OVERLAP_FORCE_MULTIPLIER = 3;           // How much stronger the force is when bubbles overlap (higher = stronger)
-    const BASE_REPULSION = 0.0065;                 // Base strength of repulsion between bubbles (higher = stronger repulsion)
-    const REPULSION_POWER = 0.3;                  // How aggressively repulsion scales with cluster size (higher = more aggressive)
-    const OUTWARD_FORCE_DIVISOR = 3;              // How much cluster size affects outward force (lower = stronger effect)
-    const OUTWARD_FORCE_POWER = 0.9;              // How aggressively outward force scales with cluster size (higher = more aggressive)
+    const VELOCITY_POWER = 0.9;                   // How aggressively velocity scales with cluster size
+    const OVERLAP_SCALE = 0.3;                    // How strongly overlapping bubbles push apart
+    const CLUSTER_SCALE_DIVISOR = 3;              // How much cluster size affects spring force
+    const OVERLAP_FORCE_MULTIPLIER = 3;           // How much stronger the force is when bubbles overlap
+    const BASE_REPULSION = 0.0065;                // Base strength of repulsion between bubbles
+    const REPULSION_POWER = 0.3;                  // How aggressively repulsion scales with cluster size
+    const OUTWARD_FORCE_DIVISOR = 3;              // How much cluster size affects outward force
+    const OUTWARD_FORCE_POWER = 0.9;              // How aggressively outward force scales with cluster size
 
-    // Axis simulation
-    const repaymentBands = [500, 1000, 2000, 5000]; // Common repayments
-    const minAPR = 3; // %
-    const maxAPR = 15; // %
-
-    const minLoanAmount = 5000;  // $
-    const maxLoanAmount = 100000; // $
-
-    const minRadius = 5;
-    const maxRadius = 30;
-
-    // Physics settings
+    // --- Physics Settings ---
     const SPRING_CONSTANT = 0.008;
     const DAMPING = 0.75;
     const OUTWARD_FORCE = 0.004;
@@ -143,13 +131,12 @@
     const REVERT_DELAY = 2000;
     const REVERT_SPEED = 0.15;
 
+    // --- Data State ---
     const allBubbles = [];
     const clusters = [];
     const singleBubbles = [];
     let mouseX = 0;
     let mouseY = 0;
-
-    // Global for padded date range
     let PADDED_MIN_DATE = null;
     let PADDED_MAX_DATE = null;
 
@@ -765,6 +752,35 @@
 
     // Start animation
     animate();
+
+    // --- Responsive Resize Handler ---
+    function resizeChart(newWidth, newHeight) {
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+        WIDTH = newWidth;
+        HEIGHT = newHeight;
+        CHART_HEIGHT = Math.round(HEIGHT * 0.92);
+        CHART_PADDING_X = Math.round(WIDTH * 0.05);
+        CHART_PADDING_TOP = Math.round(HEIGHT * 0.03);
+        draw();
+    }
+
+    // Optional: Make chart responsive to window size (16:9 default)
+    function setDefaultAspectRatio() {
+        const aspect = 16 / 9;
+        let w = Math.min(window.innerWidth - 40, 1280);
+        let h = Math.round(w / aspect);
+        if (h > window.innerHeight - 100) {
+            h = window.innerHeight - 100;
+            w = Math.round(h * aspect);
+        }
+        resizeChart(w, h);
+    }
+
+    // Listen for window resize
+    window.addEventListener('resize', setDefaultAspectRatio);
+    // Initial set
+    setDefaultAspectRatio();
     </script>
 </body>
 </html> 
