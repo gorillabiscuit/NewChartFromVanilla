@@ -10,12 +10,54 @@
             margin: 0;
             padding: 20px;
             font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
         }
-        .chart-container {
+        .wallet-selector {
+            margin: 20px auto;
+            padding: 8px;
+            width: 300px;
+            font-size: 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: #221E37;
+            color: #B6B1D5;
+        }
+        .app {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 24px;
+            gap: 24px;
             width: 100%;
-            height: 600px;
+            max-width: 1200px;
+            background: #221E37;
+            box-shadow: 0px 0px 2px rgba(0, 0, 0, 0.24), 0px 12px 24px -4px rgba(0, 0, 0, 0.24);
+            border-radius: 16px;
+            margin: 20px auto;
+            box-sizing: border-box;
+        }
+        .chart-wrapper {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            padding: 12px 0px 0px 0px;
+            width: 100%;
+            height: 365px;
+            position: relative;
+        }
+        canvas {
+            display: block;
+            margin: 0;
             border: none;
             position: relative;
+            z-index: 1;
+            border-radius: 8px;
+            width: 100%;
+            height: 100%;
         }
         .tooltip {
             position: absolute;
@@ -27,32 +69,70 @@
             opacity: 0;
             transition: opacity 0.2s;
         }
-        .chart-wrapper {
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            width: 100%;
-            margin: 20px auto;
-            position: relative;
-        }
-        canvas {
-            background: #f0f0f0;
-            display: block;
-            margin: 20px auto;
-            border: none;
-            position: relative;
-            z-index: 1;
-        }
         #tooltip {
             position: absolute;
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 5px 8px;
-            border-radius: 4px;
+            min-width: 320px;
+            max-width: 340px;
+            background: #332C4B;
+            color: #fff;
+            border-radius: 20px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+            padding: 24px 24px 20px 24px;
+            font-family: 'Inter', Arial, sans-serif;
             font-size: 12px;
             pointer-events: none;
             visibility: hidden;
-            z-index: 2;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            border: none;
+            transition: opacity 0.2s;
+        }
+        #tooltip .tooltip-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 8px;
+        }
+        #tooltip .tooltip-img {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #3ED6B7;
+            object-fit: cover;
+            border: 4px solid #221E37;
+        }
+        #tooltip .tooltip-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #fff;
+            margin: 0;
+            line-height: 1.2;
+        }
+        #tooltip .tooltip-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 0 0 2px 0;
+        }
+        #tooltip .tooltip-label {
+            color: hsl(0, 0%, 68%);
+            font-size: 14px;
+            font-weight: 500;
+            
+        }
+        #tooltip .tooltip-value {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+        #tooltip .tooltip-value.usdc {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            margin-left: 4px;
         }
         .axis-label {
             position: absolute;
@@ -69,22 +149,17 @@
             top: 50%;
             transform: translateY(-50%) rotate(-90deg);
         }
-        .wallet-selector {
-            margin: 20px auto;
-            display: block;
-            padding: 8px;
-            width: 300px;
-            font-size: 14px;
-        }
     </style>
 </head>
 <body>
     <select id="walletSelect" class="wallet-selector">
         <option value="">Select a wallet...</option>
     </select>
-    <div class="chart-wrapper">
-        <canvas id="canvas" width="800" height="650"></canvas>
-        <div id="tooltip"></div>
+    <div class="app">
+        <div class="chart-wrapper">
+            <canvas id="canvas"></canvas>
+            <div id="tooltip"></div>
+        </div>
     </div>
     <script>
     // --- DOM and Canvas Setup ---
@@ -95,9 +170,10 @@
     // --- Layout Constants ---
     let WIDTH = canvas.width;
     let HEIGHT = canvas.height;
-    let CHART_HEIGHT = Math.round(HEIGHT * 0.92); // Plot area is 92% of canvas height
-    let CHART_PADDING_X = Math.round(WIDTH * 0.05); // 5% horizontal padding
+    let CHART_HEIGHT = Math.round(HEIGHT * 0.88); // Reduce plot area to leave space for x-axis labels
+    let CHART_PADDING_X = 24; // 24px left padding for y-axis
     let CHART_PADDING_TOP = Math.round(HEIGHT * 0.03); // 3% top padding
+    let CHART_PADDING_BOTTOM = Math.round(HEIGHT * 0.09); // 9% bottom padding for x-axis labels
 
     // --- Axis and Tick Constants ---
     const DATE_FORMAT = { month: 'short', day: 'numeric' };
@@ -119,9 +195,9 @@
     const CLUSTER_SCALE_DIVISOR = 3;              // How much cluster size affects spring force
     const OVERLAP_FORCE_MULTIPLIER = 3;           // How much stronger the force is when bubbles overlap
     const BASE_REPULSION = 0.0065;                // Base strength of repulsion between bubbles
-    const REPULSION_POWER = 0.3;                  // How aggressively repulsion scales with cluster size
+    const REPULSION_POWER = 2;                  // How aggressively repulsion scales with cluster size
     const OUTWARD_FORCE_DIVISOR = 3;              // How much cluster size affects outward force
-    const OUTWARD_FORCE_POWER = 0.9;              // How aggressively outward force scales with cluster size
+    const OUTWARD_FORCE_POWER = 2;              // How aggressively outward force scales with cluster size
 
     // --- Physics Settings ---
     const SPRING_CONSTANT = 0.008;
@@ -153,6 +229,18 @@
         "0x6358869f958ecdd132f5da7937264de46e54483c",
         "0x1da5331994e781ab0e2af9f85bfce2037a514170"
     ];
+
+    // Add protocol color mapping at the top of the script
+    const PROTOCOL_COLORS = {
+        'NFTfi': '#D14D8A',
+        'Gondi': '#FFE082',
+        'X2Y2': '#D1A06F',
+        'Zharta': '#5EC6A6',
+        'Arcade': '#5B8DB8',
+        'Metastreet': '#A3C8F5',
+        'Blend': '#B18CFF'
+    };
+    const DEFAULT_PROTOCOL_COLOR = '#888888';
 
     // Populate wallet dropdown
     const walletSelect = document.getElementById('walletSelect');
@@ -215,8 +303,11 @@
             apr: loan.apr,
             loanAmount: loan.principalAmountUSD,
             dueTime: loan.dueTime, // Store the due time for date calculations
+            name: loan.nftName || loan.nftProjectName || 'NFT Loan',
+            imageUrl: loan.nftImageSmallUri || loan.nftImageLargeUri || loan.nftProjectImageUri || 'https://via.placeholder.com/56x56.png?text=NFT',
             showTooltip: true,
-            visited: false
+            visited: false,
+            protocol: loan.protocolName || ''
         };
     }
 
@@ -322,74 +413,74 @@
         }
     }
 
+    // Add this function to measure overlap between two bubbles
+    function getBubbleOverlap(b1, b2) {
+        const dx = b1.x - b2.x;
+        const dy = b1.y - b2.y;
+        const dist = Math.hypot(dx, dy);
+        const overlap = (b1.r + b2.r) - dist;
+        return overlap;
+    }
+
     // --- Physics Functions ---
     function applySpringForces(cluster) {
         const bubbles = cluster.bubbles;
         const clusterSize = cluster.size;
-        
         // Calculate overlap counts for each bubble
         const overlapCounts = new Map();
         for (let i = 0; i < bubbles.length; i++) {
             let overlaps = 0;
             for (let j = 0; j < bubbles.length; j++) {
-                if (i !== j && bubblesOverlap(bubbles[i], bubbles[j])) {
+                if (i !== j && getBubbleOverlap(bubbles[i], bubbles[j]) > 0.1 * (bubbles[i].r + bubbles[j].r)) {
                     overlaps++;
                 }
             }
             overlapCounts.set(bubbles[i], overlaps);
         }
-
-        // Apply forces between all pairs
+        // --- Always apply spring/attraction force to all pairs ---
         for (let i = 0; i < bubbles.length; i++) {
             for (let j = i + 1; j < bubbles.length; j++) {
                 const ci = bubbles[i];
                 const cj = bubbles[j];
-                
                 const dx = cj.x - ci.x;
                 const dy = cj.y - ci.y;
                 const dist = Math.hypot(dx, dy) || 1e-6;
-                
                 const idealDist = ci.r + cj.r;
                 const displacement = dist - idealDist;
-                
-                // More aggressive scaling for overlaps and cluster size
                 const overlapScale = 1 + (overlapCounts.get(ci) + overlapCounts.get(cj)) * OVERLAP_SCALE;
                 const clusterScale = 1 + (clusterSize / CLUSTER_SCALE_DIVISOR);
                 const springVariation = 1 + (Math.random() - 0.5) * 0.1;
                 let force = SPRING_CONSTANT * displacement * overlapScale * clusterScale * springVariation;
-                
-                if (displacement < 0) {
+                // Only boost force for overlapping pairs
+                if (displacement < 0 && getBubbleOverlap(ci, cj) > 0.1 * (ci.r + cj.r)) {
                     force *= OVERLAP_FORCE_MULTIPLIER;
                 }
-                
                 const nx = dx / dist;
                 const ny = dy / dist;
-                
                 ci.vx += nx * force;
                 ci.vy += ny * force;
                 cj.vx -= nx * force;
                 cj.vy -= ny * force;
             }
         }
-
-        // Stronger repulsion force for larger clusters
+        // --- Repulsion only for pairs with >10% overlap ---
         const repulsionForce = BASE_REPULSION * Math.pow(clusterSize, REPULSION_POWER);
         for (let i = 0; i < bubbles.length; i++) {
             for (let j = i + 1; j < bubbles.length; j++) {
                 const ci = bubbles[i];
                 const cj = bubbles[j];
-                
-                const dx = cj.x - ci.x;
-                const dy = cj.y - ci.y;
-                const dist = Math.hypot(dx, dy) || 1e-6;
-                
-                const nx = dx / dist;
-                const ny = dy / dist;
-                
-                ci.vx -= nx * repulsionForce;
-                ci.vy -= ny * repulsionForce;
-                cj.vx += nx * repulsionForce;
-                cj.vy += ny * repulsionForce;
+                const overlap = getBubbleOverlap(ci, cj);
+                if (overlap > 0.1 * (ci.r + cj.r)) {
+                    const dx = cj.x - ci.x;
+                    const dy = cj.y - ci.y;
+                    const dist = Math.hypot(dx, dy) || 1e-6;
+                    const nx = dx / dist;
+                    const ny = dy / dist;
+                    ci.vx -= nx * repulsionForce;
+                    ci.vy -= ny * repulsionForce;
+                    cj.vx += nx * repulsionForce;
+                    cj.vy += ny * repulsionForce;
+                }
             }
         }
     }
@@ -532,36 +623,34 @@
     // --- Draw Axes ---
     function drawAxes() {
         ctx.save();
+        ctx.lineWidth = 1;
         
         // Draw Y axis APR ticks, grid lines, and labels (D3-inspired)
         if (allBubbles.length > 0) {
-            // Use the same min/max APR as for bubble mapping
             const loans = allBubbles;
             const minAPR = Math.min(...loans.map(l => l.apr));
             const maxAPR = Math.max(...loans.map(l => l.apr));
             let aprTicks = niceLinearTicks(minAPR, maxAPR, 8);
-            // Remove the first tick to avoid overlap with the first date
             if (aprTicks.length > 1) aprTicks = aprTicks.slice(1);
             aprTicks.forEach(tick => {
-                // Map APR to y position
                 const y = CHART_PADDING_TOP + (CHART_HEIGHT - CHART_PADDING_TOP) * (1 - (tick - minAPR) / ((maxAPR - minAPR) || 1));
                 // Draw grid line
-                ctx.strokeStyle = GRID_LINE_COLOR;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; // semi-transparent white
                 ctx.beginPath();
-                ctx.moveTo(0, y);
+                ctx.moveTo(CHART_PADDING_X, y);
                 ctx.lineTo(WIDTH, y);
                 ctx.stroke();
                 // Draw tick in left margin
-                ctx.strokeStyle = AXIS_LINE_COLOR;
+                ctx.strokeStyle = '#B6B1D5'; // lighter color for axis
                 ctx.beginPath();
                 ctx.moveTo(CHART_PADDING_X - TICK_LENGTH, y);
                 ctx.lineTo(CHART_PADDING_X, y);
                 ctx.stroke();
                 // Draw label in left margin
-                ctx.fillStyle = '#333';
+                ctx.fillStyle = '#B6B1D5'; // lighter color for labels
                 ctx.textAlign = 'right';
                 ctx.textBaseline = 'middle';
-                ctx.font = '13px Arial';
+                ctx.font = '13px Inter, Arial, sans-serif';
                 ctx.fillText(tick % 1 === 0 ? `${tick}` : tick.toFixed(2), CHART_PADDING_X - TICK_LENGTH - TICK_PADDING, y);
             });
         }
@@ -575,19 +664,19 @@
             dateTicks.forEach(date => {
                 const x = scale(date.getTime());
                 // Draw grid line
-                ctx.strokeStyle = GRID_LINE_COLOR;
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; // semi-transparent white
                 ctx.beginPath();
                 ctx.moveTo(x, CHART_PADDING_TOP);
                 ctx.lineTo(x, CHART_HEIGHT);
                 ctx.stroke();
                 // Draw tick
-                ctx.strokeStyle = AXIS_LINE_COLOR;
+                ctx.strokeStyle = '#B6B1D5'; // lighter color for axis
                 ctx.beginPath();
                 ctx.moveTo(x, CHART_HEIGHT);
                 ctx.lineTo(x, CHART_HEIGHT + TICK_LENGTH);
                 ctx.stroke();
-                // Draw date label in the white area
-                ctx.fillStyle = '#333';
+                // Draw date label in the dark area, above the bottom padding
+                ctx.fillStyle = '#B6B1D5'; // lighter color for labels
                 ctx.textAlign = 'center';
                 const dateStr = dateFormat(date);
                 ctx.fillText(dateStr, x, CHART_HEIGHT + TICK_LENGTH + TICK_PADDING + 10);
@@ -601,36 +690,44 @@
     function draw() {
         // Visually separate plot and label areas
         ctx.clearRect(0, 0, WIDTH, HEIGHT);
-        // Draw top margin (white for top padding)
-        ctx.fillStyle = '#fff';
+        // Draw top margin (dark for top padding)
+        ctx.fillStyle = '#221E37';
         ctx.fillRect(0, 0, WIDTH, CHART_PADDING_TOP);
-        // Draw left margin (white for y-axis labels)
-        ctx.fillStyle = '#fff';
+        // Draw left margin (dark for y-axis labels)
+        ctx.fillStyle = '#221E37';
         ctx.fillRect(0, CHART_PADDING_TOP, CHART_PADDING_X, CHART_HEIGHT - CHART_PADDING_TOP);
-        // Draw label area (white)
-        ctx.fillStyle = '#fff';
+        // Draw label area (dark)
+        ctx.fillStyle = '#221E37';
         ctx.fillRect(0, CHART_HEIGHT, WIDTH, HEIGHT - CHART_HEIGHT);
-        // Draw plot area (grey), starting exactly at the y-axis line
-        ctx.fillStyle = '#f0f0f0';
+        // Draw plot area (dark), starting exactly at the y-axis line
+        ctx.fillStyle = '#221E37';
         ctx.fillRect(CHART_PADDING_X - TICK_LENGTH, CHART_PADDING_TOP, WIDTH - (CHART_PADDING_X - TICK_LENGTH), CHART_HEIGHT - CHART_PADDING_TOP);
         // Draw axes and bubbles
         drawAxes();
         for (const b of singleBubbles) {
             ctx.beginPath();
             ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(100, 200, 255, 0.6)';
+            ctx.fillStyle = PROTOCOL_COLORS[b.protocol] || DEFAULT_PROTOCOL_COLOR;
+            ctx.globalAlpha = 0.65;
             ctx.fill();
-            ctx.strokeStyle = 'black';
+            ctx.globalAlpha = 1.0;
+            ctx.strokeStyle = 'rgba(0,0,0,0)'; // no outline
+            ctx.lineWidth = 1;
             ctx.stroke();
         }
         for (const cluster of clusters) {
             for (const b of cluster.bubbles) {
                 ctx.beginPath();
                 ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(255, 150, 150, 0.6)';
+                ctx.fillStyle = PROTOCOL_COLORS[b.protocol] || DEFAULT_PROTOCOL_COLOR;
+                ctx.globalAlpha = 0.65;
                 ctx.fill();
-                ctx.strokeStyle = 'black';
+                ctx.globalAlpha = 1.0;
+                ctx.setLineDash([6, 6]);
+                ctx.strokeStyle = 'rgba(255,255,255,0.75)'; // dashed white outline
+                ctx.lineWidth = 1;
                 ctx.stroke();
+                ctx.setLineDash([]);
             }
         }
     }
@@ -693,7 +790,6 @@
                 closestDist = dist;
             }
         }
-
         for (const cluster of clusters) {
             for (const b of cluster.bubbles) {
                 const dx = mouseX - b.x;
@@ -705,11 +801,40 @@
                 }
             }
         }
-
         if (closest) {
-            tooltip.style.left = (closest.x + canvas.offsetLeft + 10) + "px";
-            tooltip.style.top = (closest.y + canvas.offsetTop - 20) + "px";
-            tooltip.innerText = `APR: ${closest.apr.toFixed(2)}%\nRepayment: $${closest.repayment.toFixed(0)}\nLoan: $${closest.loanAmount.toFixed(0)}`;
+            // Format expiry
+            let expiry = '';
+            if (closest.dueTime) {
+                const d = new Date(closest.dueTime);
+                expiry = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+            }
+            // Format repayment
+            const repayment = closest.repayment ? closest.repayment.toLocaleString() : '';
+            // Build HTML
+            tooltip.innerHTML = `
+                <div class="tooltip-header">
+                    <img class="tooltip-img" src="${closest.imageUrl}" alt="NFT" />
+                    <div class="tooltip-title">${closest.name || 'NFT Loan'}</div>
+                </div>
+                <div class="tooltip-row">
+                    <span class="tooltip-label">Protocol</span>
+                    <span class="tooltip-value">${closest.protocol || 'Unknown'}</span>
+                </div>
+                <div class="tooltip-row">
+                    <span class="tooltip-label">APR</span>
+                    <span class="tooltip-value">${closest.apr ? closest.apr.toFixed(2) : '--'}%</span>
+                </div>
+                <div class="tooltip-row">
+                    <span class="tooltip-label">Repayment</span>
+                    <span class="tooltip-value">${repayment} <span class="tooltip-value usdc">USDC</span></span>
+                </div>
+                <div class="tooltip-row">
+                    <span class="tooltip-label">Expiry</span>
+                    <span class="tooltip-value">${expiry}</span>
+                </div>
+            `;
+            tooltip.style.left = (closest.x + canvas.offsetLeft + 20) + "px";
+            tooltip.style.top = (closest.y + canvas.offsetTop - 40) + "px";
             tooltip.style.visibility = "visible";
         } else {
             tooltip.style.visibility = "hidden";
@@ -754,33 +879,50 @@
     animate();
 
     // --- Responsive Resize Handler ---
-    function resizeChart(newWidth, newHeight) {
-        canvas.width = newWidth;
-        canvas.height = newHeight;
-        WIDTH = newWidth;
-        HEIGHT = newHeight;
-        CHART_HEIGHT = Math.round(HEIGHT * 0.92);
-        CHART_PADDING_X = Math.round(WIDTH * 0.05);
+    function resizeChart() {
+        const container = document.querySelector('.chart-wrapper');
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight;
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(containerWidth * dpr);
+        canvas.height = Math.round(containerHeight * dpr);
+        canvas.style.width = containerWidth + 'px';
+        canvas.style.height = containerHeight + 'px';
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpr, dpr);
+        WIDTH = containerWidth;
+        HEIGHT = containerHeight;
+        CHART_HEIGHT = Math.round(HEIGHT * 0.88);
+        CHART_PADDING_X = 24;
         CHART_PADDING_TOP = Math.round(HEIGHT * 0.03);
+        CHART_PADDING_BOTTOM = Math.round(HEIGHT * 0.09);
         draw();
     }
 
-    // Optional: Make chart responsive to window size (16:9 default)
-    function setDefaultAspectRatio() {
-        const aspect = 16 / 9;
-        let w = Math.min(window.innerWidth - 40, 1280);
-        let h = Math.round(w / aspect);
-        if (h > window.innerHeight - 100) {
-            h = window.innerHeight - 100;
-            w = Math.round(h * aspect);
-        }
-        resizeChart(w, h);
-    }
-
-    // Listen for window resize
-    window.addEventListener('resize', setDefaultAspectRatio);
+    // Remove the aspect ratio function and use container dimensions
+    window.addEventListener('resize', resizeChart);
     // Initial set
-    setDefaultAspectRatio();
+    resizeChart();
+
+    // Add overlap stats to the animation loop for debugging
+    function logOverlapStats() {
+        let totalOverlap = 0;
+        let maxOverlap = 0;
+        let overlapCount = 0;
+        for (let i = 0; i < allBubbles.length; i++) {
+            for (let j = i + 1; j < allBubbles.length; j++) {
+                const b1 = allBubbles[i];
+                const b2 = allBubbles[j];
+                const overlap = getBubbleOverlap(b1, b2);
+                if (overlap > 0) {
+                    totalOverlap += overlap;
+                    maxOverlap = Math.max(maxOverlap, overlap);
+                    overlapCount++;
+                }
+            }
+        }
+        console.log(`Total overlap: ${totalOverlap.toFixed(2)}, Max overlap: ${maxOverlap.toFixed(2)}, Overlapping pairs: ${overlapCount}`);
+    }
     </script>
 </body>
 </html> 
