@@ -39,6 +39,7 @@
             border-radius: 16px;
             margin: 20px auto;
             box-sizing: border-box;
+            position: relative;
         }
         .chart-wrapper {
             display: flex;
@@ -48,6 +49,30 @@
             width: 100%;
             height: 365px;
             position: relative;
+        }
+        .toggle-button {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            z-index: 100;
+            background: #332C4B;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #B6B1D5;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Inter', Arial, sans-serif;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        .toggle-button:hover {
+            background: #3D3655;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        .toggle-button.active {
+            background: #5EC6A6;
+            color: #fff;
+            border-color: #5EC6A6;
         }
         canvas {
             display: block;
@@ -156,6 +181,7 @@
         <option value="">Select a wallet...</option>
     </select>
     <div class="app">
+        <button id="imageToggle" class="toggle-button">Show Images</button>
         <div class="chart-wrapper">
             <canvas id="canvas"></canvas>
             <div id="tooltip"></div>
@@ -166,6 +192,8 @@
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const tooltip = document.getElementById('tooltip');
+    const imageToggle = document.getElementById('imageToggle');
+    let showImages = false;
 
     // --- Layout Constants ---
     let WIDTH = canvas.width;
@@ -845,12 +873,14 @@
             ctx.beginPath();
             ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
             ctx.closePath();
-            ctx.clip();
-            if (b.img && b.img.complete && b.img.naturalWidth > 0) {
+            if (showImages && b.img && b.img.complete && b.img.naturalWidth > 0) {
+                ctx.clip();
                 ctx.drawImage(b.img, b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
             } else {
-                ctx.fillStyle = "#222"; // fallback color if image not loaded
+                ctx.fillStyle = PROTOCOL_COLORS[b.protocol] || DEFAULT_PROTOCOL_COLOR;
+                ctx.globalAlpha = 0.65;
                 ctx.fill();
+                ctx.globalAlpha = 1.0;
             }
             ctx.restore();
             ctx.strokeStyle = "#fff";
@@ -864,12 +894,14 @@
                     ctx.beginPath();
                     ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
                     ctx.closePath();
-                    ctx.clip();
-                    if (b.img && b.img.complete && b.img.naturalWidth > 0) {
+                    if (showImages && b.img && b.img.complete && b.img.naturalWidth > 0) {
+                        ctx.clip();
                         ctx.drawImage(b.img, b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
                     } else {
-                        ctx.fillStyle = "#222";
+                        ctx.fillStyle = PROTOCOL_COLORS[b.protocol] || DEFAULT_PROTOCOL_COLOR;
+                        ctx.globalAlpha = 0.65;
                         ctx.fill();
+                        ctx.globalAlpha = 1.0;
                     }
                     ctx.restore();
                     ctx.setLineDash([6, 6]);
@@ -890,12 +922,14 @@
                     ctx.beginPath();
                     ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
                     ctx.closePath();
-                    ctx.clip();
-                    if (b.img && b.img.complete && b.img.naturalWidth > 0) {
+                    if (showImages && b.img && b.img.complete && b.img.naturalWidth > 0) {
+                        ctx.clip();
                         ctx.drawImage(b.img, b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
                     } else {
-                        ctx.fillStyle = "#222";
+                        ctx.fillStyle = PROTOCOL_COLORS[b.protocol] || DEFAULT_PROTOCOL_COLOR;
+                        ctx.globalAlpha = 0.65;
                         ctx.fill();
+                        ctx.globalAlpha = 1.0;
                     }
                     ctx.restore();
                     ctx.setLineDash([6, 6]);
@@ -1223,6 +1257,14 @@
         note.innerText = 'APR values above the 98th percentile are shown at the top of the chart and marked as outliers.' + (window.USD_CLIP_NOTE ? (' ' + window.USD_CLIP_NOTE) : '');
         document.querySelector('.app').insertAdjacentElement('afterend', note);
     }
+
+    // Add toggle button handler
+    imageToggle.addEventListener('click', () => {
+        showImages = !showImages;
+        imageToggle.textContent = showImages ? 'Hide Images' : 'Show Images';
+        imageToggle.classList.toggle('active', showImages);
+        draw(); // Redraw the chart with new setting
+    });
     </script>
 </body>
 </html> 
