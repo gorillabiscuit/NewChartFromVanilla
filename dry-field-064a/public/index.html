@@ -226,13 +226,8 @@
         "0x6358869f958ecdd132f5da7937264de46e54483c",
         "0xcffc336e6d019c1af58257a0b10bf2146a3f42a4",
         "0xd876f7215aaa80272b52eccdbf30e949eec13292",
-        "0x85b9e27f4eef6ac30e681eff77e01a6e0053b15e",
-        "0x1e8fd4c82adae5aeeafca2df14252d1610322179",
-        "0xbec69dfce4c1fa8b7843fee1ca85788d84a86b06",
         "0x94de7e2c73529ebf3206aa3459e699fbcdfcd49b",
         "0x7a65cd0ad11e7329f534b5b65113997cf75e3546",
-        "0xe90f08ddfa43c52149e4049d09c02919c797ed2a",
-        "0x2f44fb58135ae5d3793803c73d471c7cde4bb774"
     ];
 
     // Add protocol color mapping at the top of the script
@@ -279,15 +274,35 @@
 
     // --- Create Loan Bubble from API Data ---
     function createLoanBubbleFromAPI(loan, minAPR, maxAPR, minDue, maxDue, minUSD, maxUSD) {
+        // Defensive: skip if required fields are missing or invalid
+        if (
+            loan.apr == null || isNaN(loan.apr) ||
+            !loan.dueTime || isNaN(new Date(loan.dueTime).getTime()) ||
+            loan.principalAmountUSD == null || isNaN(loan.principalAmountUSD) ||
+            loan.maximumRepaymentAmountUSD == null || isNaN(loan.maximumRepaymentAmountUSD)
+        ) {
+            console.warn('Skipping invalid loan:', loan);
+            return null;
+        }
+        // Defensive: handle empty or missing optional fields
+        const name = loan.nftName && loan.nftName.trim() ? loan.nftName : (loan.nftProjectName && loan.nftProjectName.trim() ? loan.nftProjectName : 'NFT Loan');
+        const imageUrl = (loan.nftImageSmallUri && loan.nftImageSmallUri.trim()) ? loan.nftImageSmallUri :
+            (loan.nftImageLargeUri && loan.nftImageLargeUri.trim()) ? loan.nftImageLargeUri :
+            (loan.nftProjectImageUri && loan.nftProjectImageUri.trim()) ? loan.nftProjectImageUri :
+            'https://via.placeholder.com/56x56.png?text=NFT';
+        if (!loan.nftName || !loan.nftName.trim()) {
+            console.warn('Loan missing nftName, using fallback:', loan);
+        }
+        if (!loan.nftImageSmallUri && !loan.nftImageLargeUri && !loan.nftProjectImageUri) {
+            console.warn('Loan missing all image URIs, using placeholder:', loan);
+        }
         // Calculate base position with padding
-        let x = CHART_PADDING_X + (WIDTH - 2 * CHART_PADDING_X) * (loan.apr - minAPR) / ((maxAPR - minAPR) || 1);
-        let y = CHART_PADDING_TOP + (CHART_HEIGHT - CHART_PADDING_TOP) * (new Date(loan.dueTime).getTime() - minDue) / ((maxDue - minDue) || 1);
-        
-        // Add tiny random offset (5-10 pixels)
+        // X: Repayment date (left = earliest, right = latest)
+        let x = CHART_PADDING_X + (WIDTH - 2 * CHART_PADDING_X) * (new Date(loan.dueTime).getTime() - minDue) / ((maxDue - minDue) || 1);
+        // Y: APR (top = highest, bottom = lowest)
+        let y = CHART_PADDING_TOP + (CHART_HEIGHT - CHART_PADDING_TOP) * (1 - (loan.apr - minAPR) / ((maxAPR - minAPR) || 1));
         x += (Math.random() - 0.5) * 10;
         y += (Math.random() - 0.5) * 10;
-        
-        // Calculate radius
         const minR = 10;
         const maxR = 40;
         const minArea = Math.PI * minR * minR;
@@ -295,18 +310,13 @@
         const valueNorm = ((loan.principalAmountUSD - minUSD) / ((maxUSD - minUSD) || 1));
         const area = minArea + valueNorm * (maxArea - minArea);
         let r = Math.sqrt(area / Math.PI);
-        // Clamp radius
         r = Math.max(minR, Math.min(maxR, r));
-        
-        // Clamp to canvas with bubble radius consideration
         const minX = CHART_PADDING_X + r * BUBBLE_PADDING_FACTOR;
         const maxX = WIDTH - CHART_PADDING_X - (r * BUBBLE_PADDING_FACTOR);
         const minY = CHART_PADDING_TOP + r * BUBBLE_PADDING_FACTOR;
         const maxY = CHART_HEIGHT - (r * BUBBLE_PADDING_FACTOR);
-        
         x = Math.max(minX, Math.min(maxX, x));
         y = Math.max(minY, Math.min(maxY, y));
-        
         return {
             x, y, r,
             initialX: x, initialY: y,
@@ -316,52 +326,98 @@
             apr: loan.apr,
             loanAmount: loan.principalAmountUSD,
             dueTime: loan.dueTime, // Store the due time for date calculations
-            name: loan.nftName || loan.nftProjectName || 'NFT Loan',
-            imageUrl: loan.nftImageSmallUri || loan.nftImageLargeUri || loan.nftProjectImageUri || 'https://via.placeholder.com/56x56.png?text=NFT',
+            name: name,
+            imageUrl: imageUrl,
             showTooltip: true,
             visited: false,
-            protocol: loan.protocolName || ''
+            protocol: loan.protocolName || '',
+            loanId: loan.loanId || ''
         };
     }
 
-    // --- Use loan data for bubbles ---
-    function useLoanDataForBubbles(loans) {
+    // --- Add a user-friendly message element above the chart ---
+    if (!document.getElementById('no-data-message')) {
+        const msg = document.createElement('div');
+        msg.id = 'no-data-message';
+        msg.style.display = 'none';
+        msg.style.color = '#B6B1D5';
+        msg.style.background = '#332C4B';
+        msg.style.borderRadius = '12px';
+        msg.style.padding = '16px 24px';
+        msg.style.fontFamily = "'Inter', Arial, sans-serif";
+        msg.style.fontSize = '18px';
+        msg.style.textAlign = 'center';
+        msg.style.margin = '16px auto 0 auto';
+        msg.style.maxWidth = '600px';
+        msg.innerText = 'No valid loans found for this wallet.';
+        document.querySelector('.app').insertAdjacentElement('beforebegin', msg);
+    }
+
+    // --- Clear chart and state ---
+    function clearChart() {
         allBubbles.length = 0;
         clusters.length = 0;
         singleBubbles.length = 0;
+        ctx.clearRect(0, 0, WIDTH, HEIGHT);
+        drawAxes();
+        document.getElementById('no-data-message').style.display = 'block';
+    }
 
-        if (!loans || loans.length === 0) return;
+    // --- Robust useLoanDataForBubbles with error handling and UI feedback ---
+    function useLoanDataForBubbles(loans) {
+        try {
+            allBubbles.length = 0;
+            clusters.length = 0;
+            singleBubbles.length = 0;
+            document.getElementById('no-data-message').style.display = 'none';
 
-        // Calculate min/max for mapping
-        const minAPR = Math.min(...loans.map(l => l.apr));
-        const maxAPR = Math.max(...loans.map(l => l.apr));
-        const minDue = Math.min(...loans.map(l => new Date(l.dueTime).getTime()));
-        const maxDue = Math.max(...loans.map(l => new Date(l.dueTime).getTime()));
-        const minUSD = Math.min(...loans.map(l => l.principalAmountUSD));
-        const maxUSD = Math.max(...loans.map(l => l.principalAmountUSD));
+            if (!loans || loans.length === 0) {
+                clearChart();
+                console.warn('API response: no loans', loans);
+                return;
+            }
 
-        // Calculate dynamic padding based on data range
-        const aprRange = maxAPR - minAPR;
-        const dueRange = maxDue - minDue;
-        
-        // Calculate padding as percentage of range, but keep it within bounds
-        const aprPadding = Math.min(Math.max(aprRange * MIN_PADDING_PERCENT, aprRange * MAX_PADDING_PERCENT), aprRange * MAX_PADDING_PERCENT);
-        const duePadding = Math.min(Math.max(dueRange * MIN_PADDING_PERCENT, dueRange * MAX_PADDING_PERCENT), dueRange * MAX_PADDING_PERCENT);
+            // Calculate min/max for mapping
+            const minAPR = Math.min(...loans.map(l => l.apr));
+            const maxAPR = Math.max(...loans.map(l => l.apr));
+            const minDue = Math.min(...loans.map(l => new Date(l.dueTime).getTime()));
+            const maxDue = Math.max(...loans.map(l => new Date(l.dueTime).getTime()));
+            const minUSD = Math.min(...loans.map(l => l.principalAmountUSD));
+            const maxUSD = Math.max(...loans.map(l => l.principalAmountUSD));
 
-        // Adjust min/max with padding
-        const paddedMinAPR = minAPR - aprPadding;
-        const paddedMaxAPR = maxAPR + aprPadding;
-        const paddedMinDue = minDue - duePadding;
-        const paddedMaxDue = maxDue + duePadding;
+            // Calculate dynamic padding based on data range
+            const aprRange = maxAPR - minAPR;
+            const dueRange = maxDue - minDue;
+            const aprPadding = Math.min(Math.max(aprRange * MIN_PADDING_PERCENT, aprRange * MAX_PADDING_PERCENT), aprRange * MAX_PADDING_PERCENT);
+            const duePadding = Math.min(Math.max(dueRange * MIN_PADDING_PERCENT, dueRange * MAX_PADDING_PERCENT), dueRange * MAX_PADDING_PERCENT);
+            const paddedMinAPR = minAPR - aprPadding;
+            const paddedMaxAPR = maxAPR + aprPadding;
+            const paddedMinDue = minDue - duePadding;
+            const paddedMaxDue = maxDue + duePadding;
+            PADDED_MIN_DATE = paddedMinDue;
+            PADDED_MAX_DATE = paddedMaxDue;
 
-        // Store globally for axis drawing
-        PADDED_MIN_DATE = paddedMinDue;
-        PADDED_MAX_DATE = paddedMaxDue;
-
-        for (const loan of loans) {
-            allBubbles.push(createLoanBubbleFromAPI(loan, paddedMinAPR, paddedMaxAPR, paddedMinDue, paddedMaxDue, minUSD, maxUSD));
+            let validCount = 0;
+            const validLoans = [];
+            for (const loan of loans) {
+                const bubble = createLoanBubbleFromAPI(loan, paddedMinAPR, paddedMaxAPR, paddedMinDue, paddedMaxDue, minUSD, maxUSD);
+                if (bubble) {
+                    allBubbles.push(bubble);
+                    validLoans.push(loan);
+                    validCount++;
+                }
+            }
+            if (validCount === 0) {
+                clearChart();
+                console.warn('API response:', loans);
+                console.warn('Filtered valid loans:', validLoans);
+                return;
+            }
+            findClusters(allBubbles);
+        } catch (err) {
+            clearChart();
+            console.error('Error processing loan data:', err);
         }
-        findClusters(allBubbles);
     }
 
     // --- Detect Overlaps and Form Clusters ---
@@ -375,19 +431,14 @@
     function findClusters(bubbles) {
         const visited = new Set();
         const clusterMap = new Map();
-        
-        // First pass: find all clusters and their sizes
         for (const b of bubbles) {
             if (visited.has(b)) continue;
-
             const cluster = [];
             const queue = [b];
             visited.add(b);
-
             while (queue.length > 0) {
                 const current = queue.pop();
                 cluster.push(current);
-
                 for (const other of bubbles) {
                     if (!visited.has(other) && bubblesOverlap(current, other)) {
                         visited.add(other);
@@ -395,12 +446,10 @@
                     }
                 }
             }
-
             const clusterSize = cluster.length;
             for (const bubble of cluster) {
                 clusterMap.set(bubble, clusterSize);
             }
-
             if (clusterSize > 1) {
                 clusters.push({ 
                     bubbles: cluster, 
@@ -412,15 +461,15 @@
                 });
             } else {
                 singleBubbles.push(cluster[0]);
+                // Defensive: log single-loan cluster
+                console.info('Single-loan cluster detected:', cluster[0]);
             }
         }
-
         // Second pass: update initial velocities based on cluster size
         for (const b of bubbles) {
             const clusterSize = clusterMap.get(b) || 1;
             const velocityScale = Math.pow(clusterSize, VELOCITY_POWER);
             const angle = Math.random() * Math.PI * 2;
-            
             b.vx = Math.cos(angle) * BASE_VELOCITY * velocityScale;
             b.vy = Math.sin(angle) * BASE_VELOCITY * velocityScale;
         }
@@ -726,6 +775,7 @@
         ctx.fillRect(CHART_PADDING_X - TICK_LENGTH, CHART_PADDING_TOP, WIDTH - (CHART_PADDING_X - TICK_LENGTH), CHART_HEIGHT - CHART_PADDING_TOP);
         // Draw axes and bubbles
         drawAxes();
+        // 1. Draw single bubbles and non-expanded clusters
         for (const b of singleBubbles) {
             ctx.beginPath();
             ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
@@ -738,20 +788,42 @@
             ctx.stroke();
         }
         for (const cluster of clusters) {
-            for (const b of cluster.bubbles) {
-                ctx.beginPath();
-                ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-                ctx.fillStyle = PROTOCOL_COLORS[b.protocol] || DEFAULT_PROTOCOL_COLOR;
-                ctx.globalAlpha = 0.65;
-                ctx.fill();
-                ctx.globalAlpha = 1.0;
-                ctx.setLineDash([6, 6]);
-                ctx.beginPath();
-                ctx.arc(b.x, b.y, b.r + 2, 0, Math.PI * 2); // 2px offset for stroke
-                ctx.strokeStyle = 'rgba(255,255,255,0.75)'; // dashed white outline
-                ctx.lineWidth = 1;
-                ctx.stroke();
-                ctx.setLineDash([]);
+            if (cluster.state !== "expanded" && cluster.state !== "expanding") {
+                for (const b of cluster.bubbles) {
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                    ctx.fillStyle = PROTOCOL_COLORS[b.protocol] || DEFAULT_PROTOCOL_COLOR;
+                    ctx.globalAlpha = 0.65;
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                    ctx.setLineDash([6, 6]);
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.r + 2, 0, Math.PI * 2); // 2px offset for stroke
+                    ctx.strokeStyle = 'rgba(255,255,255,0.75)'; // dashed white outline
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+        }
+        // 2. Draw expanded (and expanding) clusters on top
+        for (const cluster of clusters) {
+            if (cluster.state === "expanded" || cluster.state === "expanding") {
+                for (const b of cluster.bubbles) {
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                    ctx.fillStyle = PROTOCOL_COLORS[b.protocol] || DEFAULT_PROTOCOL_COLOR;
+                    ctx.globalAlpha = 0.65;
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                    ctx.setLineDash([6, 6]);
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.r + 2, 0, Math.PI * 2); // 2px offset for stroke
+                    ctx.strokeStyle = 'rgba(255,255,255,0.75)'; // dashed white outline
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
             }
         }
     }
@@ -826,14 +898,39 @@
             }
         }
         if (closest) {
-            // Format expiry
+            // Format expiry (date and time)
             let expiry = '';
+            let expiryTime = '';
             if (closest.dueTime) {
                 const d = new Date(closest.dueTime);
                 expiry = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                expiryTime = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             }
             // Format repayment
             const repayment = closest.repayment ? closest.repayment.toLocaleString() : '';
+            // --- Calculate Total Due (robust cumulative USD from soonest to hovered loan by due date) ---
+            // Only sum over bubbles for the current wallet (allBubbles)
+            const valid = allBubbles.filter(b =>
+                b.dueTime && !isNaN(new Date(b.dueTime).getTime()) &&
+                Number.isFinite(b.repayment) &&
+                b.loanId // or another unique identifier
+            );
+            // Sort by due date ascending, then by loanId (string compare for stability)
+            valid.sort((a, b) => {
+                const dateDiff = new Date(a.dueTime) - new Date(b.dueTime);
+                if (dateDiff !== 0) return dateDiff;
+                return String(a.loanId).localeCompare(String(b.loanId));
+            });
+            // Find hovered loan's index (by loanId)
+            const hoveredIndex = valid.findIndex(b => b.loanId === closest.loanId);
+            let totalDue = 0;
+            if (hoveredIndex !== -1) {
+                for (let i = 0; i <= hoveredIndex; i++) {
+                    totalDue += valid[i].repayment;
+                }
+            } else {
+                totalDue = Number.isFinite(closest.repayment) ? closest.repayment : 0; // fallback
+            }
             // Build HTML
             tooltip.innerHTML = `
                 <div class="tooltip-header">
@@ -853,8 +950,12 @@
                     <span class="tooltip-value">${repayment} <span class="tooltip-value usdc">USDC</span></span>
                 </div>
                 <div class="tooltip-row">
-                    <span class="tooltip-label">Expiry</span>
-                    <span class="tooltip-value">${expiry}</span>
+                    <span class="tooltip-label">Repayment Date</span>
+                    <span class="tooltip-value">${expiry} ${expiryTime}</span>
+                </div>
+                <div class="tooltip-row">
+                    <span class="tooltip-label">Total Due</span>
+                    <span class="tooltip-value">${totalDue.toLocaleString()} <span class="tooltip-value usdc">USDC</span></span>
                 </div>
             `;
             tooltip.style.left = (closest.x + canvas.offsetLeft + 20) + "px";
@@ -865,14 +966,22 @@
         }
     }
 
-    // --- Update wallet selection event to use new bubbles ---
+    // --- Add try/catch to wallet change event ---
     walletSelect.addEventListener('change', async (e) => {
-        const selectedWallet = e.target.value;
-        if (selectedWallet) {
-            const data = await fetchLoanData(selectedWallet);
-            if (data && data.data && data.data.length > 0) {
-                useLoanDataForBubbles(data.data);
+        try {
+            const selectedWallet = e.target.value;
+            if (selectedWallet) {
+                const data = await fetchLoanData(selectedWallet);
+                if (data && data.data && data.data.length > 0) {
+                    useLoanDataForBubbles(data.data);
+                } else {
+                    clearChart();
+                    console.warn('API response: no loans', data);
+                }
             }
+        } catch (err) {
+            clearChart();
+            console.error('Error loading wallet data:', err);
         }
     });
 
@@ -902,6 +1011,30 @@
         for (let i = 0; i < cluster.bubbles.length; i++) {
             cluster.bubbles[i].packedX = centroidX + (packed[i].x - packedCenterX);
             cluster.bubbles[i].packedY = centroidY + (packed[i].y - packedCenterY);
+        }
+        // --- Post-packing boundary correction (no scaling) ---
+        // Calculate min/max after centering
+        let shiftX = 0, shiftY = 0;
+        const leftBound = CHART_PADDING_X;
+        const rightBound = WIDTH - CHART_PADDING_X;
+        const topBound = CHART_PADDING_TOP;
+        const bottomBound = CHART_HEIGHT;
+        // Find how much we need to shift to keep all bubbles inside bounds
+        let minBubbleX = Infinity, maxBubbleX = -Infinity, minBubbleY = Infinity, maxBubbleY = -Infinity;
+        for (const b of cluster.bubbles) {
+            minBubbleX = Math.min(minBubbleX, b.packedX - b.r);
+            maxBubbleX = Math.max(maxBubbleX, b.packedX + b.r);
+            minBubbleY = Math.min(minBubbleY, b.packedY - b.r);
+            maxBubbleY = Math.max(maxBubbleY, b.packedY + b.r);
+        }
+        if (minBubbleX < leftBound) shiftX = leftBound - minBubbleX;
+        if (maxBubbleX > rightBound) shiftX = rightBound - maxBubbleX;
+        if (minBubbleY < topBound) shiftY = topBound - minBubbleY;
+        if (maxBubbleY > bottomBound) shiftY = bottomBound - maxBubbleY;
+        // Apply the shift to all packed bubbles
+        for (const b of cluster.bubbles) {
+            b.packedX += shiftX;
+            b.packedY += shiftY;
         }
     }
 
