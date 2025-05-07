@@ -189,23 +189,26 @@
     const BUBBLE_PADDING_FACTOR = 1.2; // Add 20% extra space for bubble radius
 
     // --- Physics and Force Constants ---
-    const BASE_VELOCITY = 0.2;                    // Base velocity for initial bubble movement
-    const VELOCITY_POWER = 0.9;                   // How aggressively velocity scales with cluster size
-    const OVERLAP_SCALE = 0.3;                    // How strongly overlapping bubbles push apart
-    const CLUSTER_SCALE_DIVISOR = 3;              // How much cluster size affects spring force
-    const OVERLAP_FORCE_MULTIPLIER = 3;           // How much stronger the force is when bubbles overlap
-    const BASE_REPULSION = 0.0065;                // Base strength of repulsion between bubbles
-    const REPULSION_POWER = 2;                  // How aggressively repulsion scales with cluster size
-    const OUTWARD_FORCE_DIVISOR = 3;              // How much cluster size affects outward force
-    const OUTWARD_FORCE_POWER = 2;              // How aggressively outward force scales with cluster size
-
-    // --- Physics Settings ---
-    const SPRING_CONSTANT = 0.008;
-    const DAMPING = 0.75;
+    // --- World-class tuning for robust cluster behavior ---
+    const BASE_REPULSION = 0.008;                    // Base strength of repulsion between bubbles
+    const REPULSION_POWER = 0.5;                     // Sublinear scaling for cluster size (was 2)
+    const REPULSION_CLUSTER_CAP = 6;                 // Cap cluster size for repulsion scaling
     const OUTWARD_FORCE = 0.004;
+    const OUTWARD_FORCE_DIVISOR = 3;
+    const OUTWARD_FORCE_POWER = 0.5;                 // Sublinear scaling for outward force (was 2)
+    const OUTWARD_CLUSTER_CAP = 6;                   // Cap cluster size for outward force scaling
+    const SPRING_CONSTANT = 0.008;
+    const CLUSTER_SCALE_DIVISOR = 3;
+    const OVERLAP_SCALE = 0.3;
+    const OVERLAP_FORCE_MULTIPLIER = 3;
+    const BASE_VELOCITY = 0.2;
+    const VELOCITY_POWER = 0.9;
     const MAX_FRAMES = 60;
     const REVERT_DELAY = 2000;
     const REVERT_SPEED = 0.15;
+    const BASE_DAMPING = 0.75;                       // Damping for small clusters
+    const EXTRA_DAMPING = 0.15;                      // Additional damping for large clusters
+    const DAMPING_CLUSTER_THRESHOLD = 6;             // Cluster size at which extra damping is fully applied
 
     // --- Data State ---
     const allBubbles = [];
@@ -218,16 +221,18 @@
 
     // Wallet addresses
     const WALLETS = [
-        "0x148216a1800ab3d71668b4126b4244a9a909955f",
-        "0x2f44fb58135ae5d3793803c73d471c7cde4bb774",
+        "0xd79b937791724e47f193f67162b92cdfbf7abdfd",
+        "0x1da5331994e781ab0e2af9f85bfce2037a514170",
+        "0x6358869f958ecdd132f5da7937264de46e54483c",
+        "0xcffc336e6d019c1af58257a0b10bf2146a3f42a4",
+        "0xd876f7215aaa80272b52eccdbf30e949eec13292",
+        "0x85b9e27f4eef6ac30e681eff77e01a6e0053b15e",
+        "0x1e8fd4c82adae5aeeafca2df14252d1610322179",
+        "0xbec69dfce4c1fa8b7843fee1ca85788d84a86b06",
+        "0x94de7e2c73529ebf3206aa3459e699fbcdfcd49b",
         "0x7a65cd0ad11e7329f534b5b65113997cf75e3546",
         "0xe90f08ddfa43c52149e4049d09c02919c797ed2a",
-        "0x94de7e2c73529ebf3206aa3459e699fbcdfcd49b",
-        "0x1e8fd4c82adae5aeeafca2df14252d1610322179",
-        "0xd876f7215aaa80272b52eccdbf30e949eec13292",
-        "0xcffc336e6d019c1af58257a0b10bf2146a3f42a4",
-        "0x6358869f958ecdd132f5da7937264de46e54483c",
-        "0x1da5331994e781ab0e2af9f85bfce2037a514170"
+        "0x2f44fb58135ae5d3793803c73d471c7cde4bb774"
     ];
 
     // Add protocol color mapping at the top of the script
@@ -244,16 +249,17 @@
 
     // Populate wallet dropdown
     const walletSelect = document.getElementById('walletSelect');
+    walletSelect.innerHTML = '<option value="">Select a wallet...</option>';
     WALLETS.forEach((wallet, index) => {
         const option = document.createElement('option');
         option.value = wallet;
         option.textContent = `Wallet ${index + 1}`;
         walletSelect.appendChild(option);
     });
-    // Set default wallet (index 7 is wallet 8)
-    walletSelect.value = WALLETS[7];
+    // Set default wallet (first in the new list)
+    walletSelect.value = WALLETS[0];
     // Trigger initial load
-    fetchLoanData(WALLETS[7]).then(data => {
+    fetchLoanData(WALLETS[0]).then(data => {
         if (data && data.data && data.data.length > 0) {
             useLoanDataForBubbles(data.data);
         }
@@ -282,8 +288,15 @@
         y += (Math.random() - 0.5) * 10;
         
         // Calculate radius
-        let r = 10 + ((loan.principalAmountUSD - minUSD) / ((maxUSD - minUSD) || 1)) * (40 - 10);
-        r = Math.max(10, Math.min(40, r));
+        const minR = 10;
+        const maxR = 40;
+        const minArea = Math.PI * minR * minR;
+        const maxArea = Math.PI * maxR * maxR;
+        const valueNorm = ((loan.principalAmountUSD - minUSD) / ((maxUSD - minUSD) || 1));
+        const area = minArea + valueNorm * (maxArea - minArea);
+        let r = Math.sqrt(area / Math.PI);
+        // Clamp radius
+        r = Math.max(minR, Math.min(maxR, r));
         
         // Clamp to canvas with bubble radius consideration
         const minX = CHART_PADDING_X + r * BUBBLE_PADDING_FACTOR;
@@ -463,35 +476,44 @@
                 cj.vy -= ny * force;
             }
         }
-        // --- Repulsion only for pairs with >10% overlap ---
-        const repulsionForce = BASE_REPULSION * Math.pow(clusterSize, REPULSION_POWER);
-        for (let i = 0; i < bubbles.length; i++) {
-            for (let j = i + 1; j < bubbles.length; j++) {
-                const ci = bubbles[i];
-                const cj = bubbles[j];
-                const overlap = getBubbleOverlap(ci, cj);
-                if (overlap > 0.1 * (ci.r + cj.r)) {
-                    const dx = cj.x - ci.x;
-                    const dy = cj.y - ci.y;
-                    const dist = Math.hypot(dx, dy) || 1e-6;
-                    const nx = dx / dist;
-                    const ny = dy / dist;
-                    ci.vx -= nx * repulsionForce;
-                    ci.vy -= ny * repulsionForce;
-                    cj.vx += nx * repulsionForce;
-                    cj.vy += ny * repulsionForce;
-                }
-            }
-        }
+        // --- Repulsion force removed: replaced by constraint-based collision resolution in updateCluster ---
     }
 
     function updateCluster(cluster) {
         const bubbles = cluster.bubbles;
+        // Adaptive damping: increase for large clusters
+        const clusterSize = cluster.size;
+        let damping = BASE_DAMPING;
+        if (clusterSize > DAMPING_CLUSTER_THRESHOLD) {
+            const t = Math.min((clusterSize - DAMPING_CLUSTER_THRESHOLD) / DAMPING_CLUSTER_THRESHOLD, 1);
+            damping += t * EXTRA_DAMPING;
+        }
         for (const c of bubbles) {
             c.x += c.vx;
             c.y += c.vy;
-            c.vx *= DAMPING;
-            c.vy *= DAMPING;
+            c.vx *= damping;
+            c.vy *= damping;
+        }
+        // --- Constraint-based collision resolution: move overlapping bubbles apart ---
+        for (let i = 0; i < bubbles.length; i++) {
+            for (let j = i + 1; j < bubbles.length; j++) {
+                const bi = bubbles[i];
+                const bj = bubbles[j];
+                const dx = bj.x - bi.x;
+                const dy = bj.y - bi.y;
+                const dist = Math.hypot(dx, dy) || 1e-6;
+                const minDist = bi.r + bj.r;
+                if (dist < minDist) {
+                    const overlap = minDist - dist;
+                    const nx = dx / dist;
+                    const ny = dy / dist;
+                    // Move each bubble away from the other by half the overlap
+                    bi.x -= nx * overlap / 2;
+                    bi.y -= ny * overlap / 2;
+                    bj.x += nx * overlap / 2;
+                    bj.y += ny * overlap / 2;
+                }
+            }
         }
     }
 
@@ -499,8 +521,8 @@
         const centerX = WIDTH / 2;
         const centerY = HEIGHT / 2;
         const clusterSize = cluster.size;
-        const outwardForce = OUTWARD_FORCE * (1 + Math.pow(clusterSize, OUTWARD_FORCE_POWER) / OUTWARD_FORCE_DIVISOR);
-        
+        const cappedClusterSize = Math.min(clusterSize, OUTWARD_CLUSTER_CAP);
+        const outwardForce = OUTWARD_FORCE * (1 + Math.pow(cappedClusterSize, OUTWARD_FORCE_POWER) / OUTWARD_FORCE_DIVISOR);
         for (const c of cluster.bubbles) {
             const dx = c.x - centerX;
             const dy = c.y - centerY;
@@ -724,6 +746,8 @@
                 ctx.fill();
                 ctx.globalAlpha = 1.0;
                 ctx.setLineDash([6, 6]);
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.r + 2, 0, Math.PI * 2); // 2px offset for stroke
                 ctx.strokeStyle = 'rgba(255,255,255,0.75)'; // dashed white outline
                 ctx.lineWidth = 1;
                 ctx.stroke();
