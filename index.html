@@ -876,12 +876,54 @@
         }
     });
 
-    // Animation loop
+    // --- D3-based Circle Packing for Cluster Expansion ---
+    // Helper to pack a cluster's bubbles using d3.packSiblings
+    function packClusterBubbles(cluster) {
+        // d3.packSiblings expects an array of objects with x, y, r
+        // We'll use the current radii, and pack around (0,0)
+        const packed = cluster.bubbles.map(b => ({...b, x: 0, y: 0, r: b.r}));
+        d3.packSiblings(packed);
+        // Compute centroid of the cluster's current positions
+        let sumX = 0, sumY = 0;
+        for (const b of cluster.bubbles) {
+            sumX += b.x;
+            sumY += b.y;
+        }
+        const centroidX = sumX / cluster.bubbles.length;
+        const centroidY = sumY / cluster.bubbles.length;
+        // Compute bounding box of packed cluster
+        const minX = Math.min(...packed.map(b => b.x - b.r));
+        const maxX = Math.max(...packed.map(b => b.x + b.r));
+        const minY = Math.min(...packed.map(b => b.y - b.r));
+        const maxY = Math.max(...packed.map(b => b.y + b.r));
+        const packedCenterX = (minX + maxX) / 2;
+        const packedCenterY = (minY + maxY) / 2;
+        // Offset packed positions to center at the cluster's centroid
+        for (let i = 0; i < cluster.bubbles.length; i++) {
+            cluster.bubbles[i].packedX = centroidX + (packed[i].x - packedCenterX);
+            cluster.bubbles[i].packedY = centroidY + (packed[i].y - packedCenterY);
+        }
+    }
+
+    // Animate bubbles to packed positions
+    function animateClusterToPacked(cluster, t) {
+        for (const b of cluster.bubbles) {
+            b.x += (b.packedX - b.x) * t;
+            b.y += (b.packedY - b.y) * t;
+        }
+    }
+
+    // --- Animation loop ---
     function animate() {
         for (const cluster of clusters) {
             if (cluster.state === "expanding") {
-                applySpringForces(cluster);
-                updateCluster(cluster);
+                // On first frame, compute packed positions
+                if (!cluster.packedInitialized) {
+                    packClusterBubbles(cluster);
+                    cluster.packedInitialized = true;
+                }
+                // Animate bubbles to packed positions
+                animateClusterToPacked(cluster, 0.18); // t controls animation speed
                 cluster.frameCount++;
                 if (cluster.frameCount >= MAX_FRAMES) {
                     cluster.state = "expanded";
@@ -891,9 +933,9 @@
                 }
             } else if (cluster.state === "reverting") {
                 revertClusterSmoothly(cluster);
+                cluster.packedInitialized = false;
             }
         }
-
         draw();
         updateTooltip();
         requestAnimationFrame(animate);
