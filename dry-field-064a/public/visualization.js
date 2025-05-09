@@ -40,13 +40,17 @@ class Logger {
 class VisualizationManager {
     constructor(canvas) {
         this.canvas = canvas;
-        this.ctx = canvas.getContext('2d');
         this.logger = new Logger('VisualizationManager');
         this.events = new EventEmitter();
+        
+        // Initialize canvas renderer
+        this.canvasRenderer = new CanvasRenderer(canvas);
         
         // State
         this.bubbles = [];
         this.showImages = false;
+        this.selectedProtocol = null;
+        this.selectedCollection = null;
         
         // Layout constants
         this.WIDTH = canvas.width;
@@ -55,7 +59,6 @@ class VisualizationManager {
         this.CHART_PADDING_X = 80;
         this.CHART_PADDING_TOP = Math.round(this.HEIGHT * 0.03);
         this.CHART_PADDING_BOTTOM = Math.round(this.HEIGHT * 0.09);
-        this.TICK_LENGTH = 6;
         
         // Physics constants
         this.MAX_FRAMES = 30;
@@ -67,6 +70,20 @@ class VisualizationManager {
             'spark': '#FFB300'
         };
         this.DEFAULT_PROTOCOL_COLOR = '#FFB300';
+
+        // Initialize scales
+        this.xScale = (value) => {
+            return this.CHART_PADDING_X + (value - new Date(2020, 0, 1).getTime()) / 
+                   (new Date().getTime() - new Date(2020, 0, 1).getTime()) * 
+                   (this.WIDTH - this.CHART_PADDING_X * 2);
+        };
+
+        this.yScale = (value) => {
+            return this.CHART_HEIGHT - (value / 100) * (this.CHART_HEIGHT - this.CHART_PADDING_TOP);
+        };
+
+        this.xDomain = [new Date(2020, 0, 1).getTime(), new Date().getTime()];
+        this.yDomain = [0, 100];
     }
 
     generateAPRTicks(min, max) {
@@ -217,7 +234,8 @@ class VisualizationManager {
                     name: `Loan ${i + 1}`,
                     imageUrl: 'https://via.placeholder.com/56x56.png?text=NFT',
                     img: null,
-                    imgLoaded: false
+                    imgLoaded: false,
+                    color: this.PROTOCOL_COLORS[protocol] || this.DEFAULT_PROTOCOL_COLOR
                 });
             }
 
@@ -242,44 +260,24 @@ class VisualizationManager {
     }
 
     draw() {
-        const ctx = this.ctx;
-        const { WIDTH, HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, CHART_HEIGHT, TICK_LENGTH } = this;
+        // Prepare data for renderer
+        const data = {
+            bubbles: this.bubbles,
+            xScale: this.xScale,
+            yScale: this.yScale,
+            xDomain: this.xDomain,
+            yDomain: this.yDomain
+        };
 
-        // Clear canvas
-        ctx.clearRect(0, 0, WIDTH, HEIGHT);
+        // Prepare state for renderer
+        const state = {
+            showImages: this.showImages,
+            selectedProtocol: this.selectedProtocol,
+            selectedCollection: this.selectedCollection
+        };
 
-        // Draw background
-        ctx.fillStyle = '#221E37';
-        ctx.fillRect(0, 0, WIDTH, HEIGHT);
-
-        // Draw chart area
-        ctx.fillStyle = '#2A2540';
-        ctx.fillRect(CHART_PADDING_X, CHART_PADDING_TOP, WIDTH - CHART_PADDING_X * 2, CHART_HEIGHT - CHART_PADDING_TOP);
-
-        // Draw axes
-        this.drawAxes();
-
-        // Draw bubbles
-        for (const bubble of this.bubbles) {
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(bubble.x, bubble.y, bubble.r, 0, Math.PI * 2);
-            
-            if (this.showImages && bubble.img && bubble.imgLoaded) {
-                ctx.clip();
-                ctx.drawImage(bubble.img, bubble.x - bubble.r, bubble.y - bubble.r, bubble.r * 2, bubble.r * 2);
-            } else {
-                ctx.fillStyle = this.PROTOCOL_COLORS[bubble.protocol] || this.DEFAULT_PROTOCOL_COLOR;
-                ctx.globalAlpha = 0.65;
-                ctx.fill();
-                ctx.globalAlpha = 1.0;
-            }
-            
-            ctx.restore();
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-        }
+        // Use canvas renderer to draw
+        this.canvasRenderer.render(data, state);
     }
 
     resize() {
@@ -293,15 +291,23 @@ class VisualizationManager {
         this.canvas.style.width = containerWidth + 'px';
         this.canvas.style.height = containerHeight + 'px';
 
-        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-        this.ctx.scale(dpr, dpr);
-
         this.WIDTH = containerWidth;
         this.HEIGHT = containerHeight;
         this.CHART_HEIGHT = Math.round(this.HEIGHT * 0.88);
         this.CHART_PADDING_X = 80;
         this.CHART_PADDING_TOP = Math.round(this.HEIGHT * 0.03);
         this.CHART_PADDING_BOTTOM = Math.round(this.HEIGHT * 0.09);
+
+        // Update scales
+        this.xScale = (value) => {
+            return this.CHART_PADDING_X + (value - new Date(2020, 0, 1).getTime()) / 
+                   (new Date().getTime() - new Date(2020, 0, 1).getTime()) * 
+                   (this.WIDTH - this.CHART_PADDING_X * 2);
+        };
+
+        this.yScale = (value) => {
+            return this.CHART_HEIGHT - (value / 100) * (this.CHART_HEIGHT - this.CHART_PADDING_TOP);
+        };
 
         this.draw();
     }
