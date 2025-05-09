@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lovable Chart Test</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        .app {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 24px;
+            gap: 24px;
+            width: 100%;
+            max-width: 1200px;
+            background: #221E37;
+            box-shadow: 0px 0px 2px rgba(0, 0, 0, 0.24), 0px 12px 24px -4px rgba(0, 0, 0, 0.24);
+            border-radius: 16px;
+            margin: 20px auto;
+            box-sizing: border-box;
+            position: relative;
+        }
+        .chart-wrapper {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            padding: 12px 0px 0px 0px;
+            width: 100%;
+            height: 365px;
+            position: relative;
+        }
+        .toggle-button {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            z-index: 100;
+            background: #332C4B;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #B6B1D5;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Inter', Arial, sans-serif;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        .toggle-button:hover {
+            background: #3D3655;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        .toggle-button.active {
+            background: #5EC6A6;
+            color: #fff;
+            border-color: #5EC6A6;
+        }
+        canvas {
+            display: block;
+            margin: 0;
+            border: none;
+            position: relative;
+            z-index: 1;
+            border-radius: 8px;
+            width: 100%;
+            height: 100%;
+        }
+        #tooltip {
+            position: absolute;
+            min-width: 320px;
+            max-width: 340px;
+            background: #332C4B;
+            color: #fff;
+            border-radius: 20px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+            padding: 24px 24px 20px 24px;
+            font-family: 'Inter', Arial, sans-serif;
+            font-size: 12px;
+            pointer-events: none;
+            visibility: hidden;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            border: none;
+            transition: opacity 0.2s;
+        }
+        #tooltip .tooltip-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 8px;
+        }
+        #tooltip .tooltip-img {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #3ED6B7;
+            object-fit: cover;
+            border: 4px solid #221E37;
+        }
+        #tooltip .tooltip-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #fff;
+            margin: 0;
+            line-height: 1.2;
+        }
+        #tooltip .tooltip-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 0 0 2px 0;
+        }
+        #tooltip .tooltip-label {
+            color: hsl(0, 0%, 68%);
+            font-size: 14px;
+            font-weight: 500;
+        }
+        #tooltip .tooltip-value {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+        #tooltip .tooltip-value.usdc {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            margin-left: 4px;
+        }
+        .wallet-selector {
+            margin: 20px auto;
+            padding: 8px;
+            width: 300px;
+            font-size: 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: #221E37;
+            color: #B6B1D5;
+        }
+        #selected-loan-details {
+            margin: 20px auto;
+            padding: 20px;
+            background: #332C4B;
+            border-radius: 16px;
+            color: #fff;
+            max-width: 600px;
+            display: none;
+        }
+        #selected-loan-details.visible {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <select id="walletSelect" class="wallet-selector">
+        <option value="">Select a wallet...</option>
+    </select>
+    <div class="app">
+        <button id="imageToggle" class="toggle-button">Show Images</button>
+        <div class="chart-wrapper">
+            <canvas id="canvas"></canvas>
+            <div id="tooltip"></div>
+        </div>
+    </div>
+    <div id="selected-loan-details">
+        <h3>Selected Loan Details</h3>
+        <div id="loan-info"></div>
+    </div>
+
+    <script src="lovable-ready-chart.js"></script>
+    <script>
+        // Initialize wallet selector
+        const WALLETS = [
+            "0xd79b937791724e47f193f67162b92cdfbf7abdfd",
+            "0x1da5331994e781ab0e2af9f85bfce2037a514170",
+            "0x6358869f958ecdd132f5da7937264de46e54483c",
+            "0xcffc336e6d019c1af58257a0b10bf2146a3f42a4",
+            "0xd876f7215aaa80272b52eccdbf30e949eec13292",
+            "0x94de7e2c73529ebf3206aa3459e699fbcdfcd49b",
+            "0x7a65cd0ad11e7329f534b5b65113997cf75e3546",
+        ];
+
+        const walletSelect = document.getElementById('walletSelect');
+        walletSelect.innerHTML = '<option value="">Select a wallet...</option>';
+        const allOption = document.createElement('option');
+        allOption.value = '__ALL__';
+        allOption.textContent = 'All loans';
+        walletSelect.appendChild(allOption);
+        WALLETS.forEach((wallet, index) => {
+            const option = document.createElement('option');
+            option.value = wallet;
+            option.textContent = `Wallet ${index + 1}`;
+            walletSelect.appendChild(option);
+        });
+
+        // Initialize chart
+        initializeChart(document.getElementById('canvas'), document.getElementById('tooltip'));
+
+        // Handle wallet selection
+        walletSelect.addEventListener('change', async (e) => {
+            const selectedWallet = e.target.value;
+            if (selectedWallet) {
+                const data = await fetchLoanData(selectedWallet);
+                if (data?.data?.length > 0) {
+                    useLoanDataForBubbles(data.data);
+                }
+            }
+        });
+
+        // Handle loan selection
+        window.addEventListener('loanSelected', (e) => {
+            const loan = e.detail;
+            const detailsDiv = document.getElementById('selected-loan-details');
+            const infoDiv = document.getElementById('loan-info');
+            
+            infoDiv.innerHTML = `
+                <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+                    <img src="${loan.imageUrl}" alt="${loan.name}" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover;">
+                    <div>
+                        <h2 style="margin: 0 0 10px 0;">${loan.name}</h2>
+                        <p style="margin: 0; color: #B6B1D5;">Protocol: ${loan.protocol}</p>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;">
+                    <div>
+                        <p style="margin: 0; color: #B6B1D5;">APR</p>
+                        <p style="margin: 5px 0 0 0; font-size: 24px;">${loan.apr.toFixed(2)}%</p>
+                    </div>
+                    <div>
+                        <p style="margin: 0; color: #B6B1D5;">Repayment Amount</p>
+                        <p style="margin: 5px 0 0 0; font-size: 24px;">${loan.repayment.toLocaleString()} USDC</p>
+                    </div>
+                    <div>
+                        <p style="margin: 0; color: #B6B1D5;">Loan Amount</p>
+                        <p style="margin: 5px 0 0 0; font-size: 24px;">${loan.principalAmountUSD.toLocaleString()} USDC</p>
+                    </div>
+                    <div>
+                        <p style="margin: 0; color: #B6B1D5;">Due Date</p>
+                        <p style="margin: 5px 0 0 0; font-size: 24px;">${new Date(loan.dueTime).toLocaleDateString()}</p>
+                    </div>
+                </div>
+            `;
+            
+            detailsDiv.classList.add('visible');
+        });
+
+        // Load initial data
+        walletSelect.value = WALLETS[0];
+        fetchLoanData(WALLETS[0]).then(data => {
+            if (data?.data?.length > 0) {
+                useLoanDataForBubbles(data.data);
+            }
+        });
+    </script>
+</body>
+</html> 

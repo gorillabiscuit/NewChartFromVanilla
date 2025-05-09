@@ -1,0 +1,167 @@
+/* Chart-specific styles only - Safe to use in any context */
+
+/* Chart Container */
+.app {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 24px;
+    gap: 24px;
+    width: 100%;
+    max-width: 1200px;
+    background: #221E37;
+    box-shadow: 0px 0px 2px rgba(0, 0, 0, 0.24), 0px 12px 24px -4px rgba(0, 0, 0, 0.24);
+    border-radius: 16px;
+    box-sizing: border-box;
+    position: relative;
+}
+
+/* Chart Wrapper */
+.chart-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 12px 0px 0px 0px;
+    width: 100%;
+    height: 365px;
+    position: relative;
+}
+
+/* Image Toggle Button */
+.toggle-button {
+    position: absolute;
+    top: 24px;
+    left: 24px;
+    z-index: 100;
+    background: #332C4B;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #B6B1D5;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.toggle-button:hover {
+    background: #3D3655;
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.toggle-button.active {
+    background: #5EC6A6;
+    color: #fff;
+    border-color: #5EC6A6;
+}
+
+/* Canvas */
+.chart-wrapper canvas {
+    display: block;
+    margin: 0;
+    border: none;
+    position: relative;
+    z-index: 1;
+    border-radius: 8px;
+    width: 100%;
+    height: 100%;
+}
+
+/* Tooltip */
+#tooltip {
+    position: absolute;
+    min-width: 320px;
+    max-width: 340px;
+    background: #332C4B;
+    color: #fff;
+    border-radius: 20px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+    padding: 24px 24px 20px 24px;
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 12px;
+    pointer-events: none;
+    visibility: hidden;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    border: none;
+    transition: opacity 0.2s;
+}
+
+#tooltip .tooltip-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 8px;
+}
+
+#tooltip .tooltip-img {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #3ED6B7;
+    object-fit: cover;
+    border: 4px solid #221E37;
+}
+
+#tooltip .tooltip-title {
+    font-size: 22px;
+    font-weight: 600;
+    color: #fff;
+    margin: 0;
+    line-height: 1.2;
+}
+
+#tooltip .tooltip-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 0 0 2px 0;
+}
+
+#tooltip .tooltip-label {
+    color: hsl(0, 0%, 68%);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+#tooltip .tooltip-value {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+#tooltip .tooltip-value.usdc {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    margin-left: 4px;
+}
+
+/* No Data Message */
+#no-data-message {
+    color: #B6B1D5;
+    background: #332C4B;
+    border-radius: 12px;
+    padding: 16px 24px;
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 18px;
+    text-align: center;
+    margin: 16px auto 0 auto;
+    max-width: 600px;
+}
+
+/* APR Clip Note */
+#apr-clip-note {
+    color: #FFB300;
+    background: rgba(255,255,255,0.07);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 14px;
+    text-align: center;
+    margin: 8px auto 0 auto;
+    max-width: 600px;
+} 

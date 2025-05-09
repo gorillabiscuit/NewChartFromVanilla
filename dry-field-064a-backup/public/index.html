@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loan Bubble Graph - Corrected with Dense Overlaps</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .wallet-selector {
+            margin: 20px auto;
+            padding: 8px;
+            width: 300px;
+            font-size: 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: #221E37;
+            color: #B6B1D5;
+        }
+        .app {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 24px;
+            gap: 24px;
+            width: 100%;
+            max-width: 1200px;
+            background: #221E37;
+            box-shadow: 0px 0px 2px rgba(0, 0, 0, 0.24), 0px 12px 24px -4px rgba(0, 0, 0, 0.24);
+            border-radius: 16px;
+            margin: 20px auto;
+            box-sizing: border-box;
+            position: relative;
+        }
+        .chart-wrapper {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            padding: 12px 0px 0px 0px;
+            width: 100%;
+            height: 365px;
+            position: relative;
+        }
+        .toggle-button {
+            position: absolute;
+            top: 24px;
+            left: 24px;
+            z-index: 100;
+            background: #332C4B;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #B6B1D5;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Inter', Arial, sans-serif;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+        .toggle-button:hover {
+            background: #3D3655;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        .toggle-button.active {
+            background: #5EC6A6;
+            color: #fff;
+            border-color: #5EC6A6;
+        }
+        canvas {
+            display: block;
+            margin: 0;
+            border: none;
+            position: relative;
+            z-index: 1;
+            border-radius: 8px;
+            width: 100%;
+            height: 100%;
+        }
+        .tooltip {
+            position: absolute;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        #tooltip {
+            position: absolute;
+            min-width: 320px;
+            max-width: 340px;
+            background: #332C4B;
+            color: #fff;
+            border-radius: 20px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+            padding: 24px 24px 20px 24px;
+            font-family: 'Inter', Arial, sans-serif;
+            font-size: 12px;
+            pointer-events: none;
+            visibility: hidden;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            border: none;
+            transition: opacity 0.2s;
+        }
+        #tooltip .tooltip-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 8px;
+        }
+        #tooltip .tooltip-img {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #3ED6B7;
+            object-fit: cover;
+            border: 4px solid #221E37;
+        }
+        #tooltip .tooltip-title {
+            font-size: 22px;
+            font-weight: 600;
+            color: #fff;
+            margin: 0;
+            line-height: 1.2;
+        }
+        #tooltip .tooltip-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 0 0 2px 0;
+        }
+        #tooltip .tooltip-label {
+            color: hsl(0, 0%, 68%);
+            font-size: 14px;
+            font-weight: 500;
+            
+        }
+        #tooltip .tooltip-value {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+        #tooltip .tooltip-value.usdc {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            margin-left: 4px;
+        }
+        .axis-label {
+            position: absolute;
+            font-size: 14px;
+            color: #333;
+        }
+        .x-axis-label {
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .y-axis-label {
+            left: -40px;
+            top: 50%;
+            transform: translateY(-50%) rotate(-90deg);
+        }
+    </style>
+</head>
+<body>
+    <select id="walletSelect" class="wallet-selector">
+        <option value="">Select a wallet...</option>
+    </select>
+    <div class="app">
+        <button id="imageToggle" class="toggle-button">Show Images</button>
+        <div class="chart-wrapper">
+            <canvas id="canvas"></canvas>
+            <div id="tooltip"></div>
+        </div>
+    </div>
+    <script>
+    // --- DOM and Canvas Setup ---
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const tooltip = document.getElementById('tooltip');
+    const imageToggle = document.getElementById('imageToggle');
+    let showImages = false;
+
+    // --- Layout Constants ---
+    let WIDTH = canvas.width;
+    let HEIGHT = canvas.height;
+    let CHART_HEIGHT = Math.round(HEIGHT * 0.88); // Reduce plot area to leave space for x-axis labels
+    let CHART_PADDING_X = 24; // 24px left padding for y-axis
+    let CHART_PADDING_TOP = Math.round(HEIGHT * 0.03); // 3% top padding
+    let CHART_PADDING_BOTTOM = Math.round(HEIGHT * 0.09); // 9% bottom padding for x-axis labels
+
+    // --- Axis and Tick Constants ---
+    const DATE_FORMAT = { month: 'short', day: 'numeric' };
+    const GRID_LINE_COLOR = '#ddd';
+    const AXIS_LINE_COLOR = '#666';
+    const TICK_LENGTH = 5;
+    const TICK_PADDING = 5;
+    const DATE_TICK_COUNT = 12; // Number of date ticks to show
+
+    // --- Data Padding and Bubble Sizing ---
+    const MIN_PADDING_PERCENT = 0.05;  // Minimum 5% padding
+    const MAX_PADDING_PERCENT = 0.1;   // Maximum 10% padding
+    const BUBBLE_PADDING_FACTOR = 1.2; // Add 20% extra space for bubble radius
+
+    // --- Physics and Force Constants ---
+    // --- World-class tuning for robust cluster behavior ---
+    const BASE_REPULSION = 0.008;                    // Base strength of repulsion between bubbles
+    const REPULSION_POWER = 0.5;                     // Sublinear scaling for cluster size (was 2)
+    const REPULSION_CLUSTER_CAP = 6;                 // Cap cluster size for repulsion scaling
+    const OUTWARD_FORCE = 0.004;
+    const OUTWARD_FORCE_DIVISOR = 3;
+    const OUTWARD_FORCE_POWER = 0.5;                 // Sublinear scaling for outward force (was 2)
+    const OUTWARD_CLUSTER_CAP = 6;                   // Cap cluster size for outward force scaling
+    const SPRING_CONSTANT = 0.008;
+    const CLUSTER_SCALE_DIVISOR = 3;
+    const OVERLAP_SCALE = 0.3;
+    const OVERLAP_FORCE_MULTIPLIER = 3;
+    const BASE_VELOCITY = 0.2;
+    const VELOCITY_POWER = 0.9;
+    const MAX_FRAMES = 60;
+    const REVERT_DELAY = 2000;
+    const REVERT_SPEED = 0.15;
+    const BASE_DAMPING = 0.75;                       // Damping for small clusters
+    const EXTRA_DAMPING = 0.15;                      // Additional damping for large clusters
+    const DAMPING_CLUSTER_THRESHOLD = 6;             // Cluster size at which extra damping is fully applied
+
+    // --- Data State ---
+    const allBubbles = [];
+    const clusters = [];
+    const singleBubbles = [];
+    let mouseX = 0;
+    let mouseY = 0;
+    let PADDED_MIN_DATE = null;
+    let PADDED_MAX_DATE = null;
+
+    // Wallet addresses
+    const WALLETS = [
+        "0xd79b937791724e47f193f67162b92cdfbf7abdfd",
+        "0x1da5331994e781ab0e2af9f85bfce2037a514170",
+        "0x6358869f958ecdd132f5da7937264de46e54483c",
+        "0xcffc336e6d019c1af58257a0b10bf2146a3f42a4",
+        "0xd876f7215aaa80272b52eccdbf30e949eec13292",
+        "0x94de7e2c73529ebf3206aa3459e699fbcdfcd49b",
+        "0x7a65cd0ad11e7329f534b5b65113997cf75e3546",
+    ];
+
+    // Add protocol color mapping at the top of the script
+    const PROTOCOL_COLORS = {
+        'NFTfi': '#D14D8A',
+        'Gondi': '#FFE082',
+        'X2Y2': '#D1A06F',
+        'Zharta': '#5EC6A6',
+        'Arcade': '#5B8DB8',
+        'Metastreet': '#A3C8F5',
+        'Blend': '#B18CFF'
+    };
+    const DEFAULT_PROTOCOL_COLOR = '#888888';
+
+    // Populate wallet dropdown
+    const walletSelect = document.getElementById('walletSelect');
+    walletSelect.innerHTML = '<option value="">Select a wallet...</option>';
+    // Add 'All loans' option
+    const allOption = document.createElement('option');
+    allOption.value = '__ALL__';
+    allOption.textContent = 'All loans';
+    walletSelect.appendChild(allOption);
+    WALLETS.forEach((wallet, index) => {
+        const option = document.createElement('option');
+        option.value = wallet;
+        option.textContent = `Wallet ${index + 1}`;
+        walletSelect.appendChild(option);
+    });
+    // Set default wallet (first in the new list)
+    walletSelect.value = WALLETS[0];
+    // Trigger initial load
+    fetchLoanData(WALLETS[0]).then(data => {
+        if (data && data.data && data.data.length > 0) {
+            useLoanDataForBubbles(data.data);
+        }
+    });
+
+    // API call function
+    async function fetchLoanData(walletAddress) {
+        try {
+            let url;
+            if (walletAddress === '__ALL__') {
+                url = `https://theta-sdk-api.nftfi.com/data/v0/pipes/loans_due_endpoint.json?daysFromNow=30&page_size=1000000&page=0`;
+            } else {
+                url = `https://theta-sdk-api.nftfi.com/data/v0/pipes/loans_due_endpoint.json?daysFromNow=30&page_size=1000000&borrowerAddress=${walletAddress}&page=0`;
+            }
+            const response = await fetch(url);
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('Error fetching loan data:', error);
+            return null;
+        }
+    }
+
+    // --- Create Loan Bubble from API Data ---
+    function createLoanBubbleFromAPI(loan, minAPR, maxAPR, minDue, maxDue, minUSD, maxUSD, APR_CLIP, minR, maxR) {
+        // Defensive: skip if required fields are missing or invalid
+        if (
+            loan.apr == null || isNaN(loan.apr) ||
+            !loan.dueTime || isNaN(new Date(loan.dueTime).getTime()) ||
+            loan.principalAmountUSD == null || isNaN(loan.principalAmountUSD) ||
+            loan.maximumRepaymentAmountUSD == null || isNaN(loan.maximumRepaymentAmountUSD)
+        ) {
+            console.warn('Skipping invalid loan:', loan);
+            return null;
+        }
+        // Defensive: handle empty or missing optional fields
+        const name = loan.nftName && loan.nftName.trim() ? loan.nftName : (loan.nftProjectName && loan.nftProjectName.trim() ? loan.nftProjectName : 'NFT Loan');
+        const imageUrl = (loan.nftImageSmallUri && loan.nftImageSmallUri.trim()) ? loan.nftImageSmallUri :
+            (loan.nftImageLargeUri && loan.nftImageLargeUri.trim()) ? loan.nftImageLargeUri :
+            (loan.nftProjectImageUri && loan.nftProjectImageUri.trim()) ? loan.nftProjectImageUri :
+            'https://via.placeholder.com/56x56.png?text=NFT';
+        if (!loan.nftName || !loan.nftName.trim()) {
+            console.warn('Loan missing nftName, using fallback:', loan);
+        }
+        if (!loan.nftImageSmallUri && !loan.nftImageLargeUri && !loan.nftProjectImageUri) {
+            console.warn('Loan missing all image URIs, using placeholder:', loan);
+        }
+        // Calculate base position with padding
+        // X: Repayment date (left = earliest, right = latest)
+        let x = CHART_PADDING_X + (WIDTH - 2 * CHART_PADDING_X) * (new Date(loan.dueTime).getTime() - minDue) / ((maxDue - minDue) || 1);
+        // Y: APR (top = highest, bottom = lowest), clip at APR_CLIP
+        let cappedAPR = Math.min(loan.apr, APR_CLIP);
+        let y = CHART_PADDING_TOP + (CHART_HEIGHT - CHART_PADDING_TOP) * (1 - (cappedAPR - minAPR) / ((maxAPR - minAPR) || 1));
+        x += (Math.random() - 0.5) * 10;
+        y += (Math.random() - 0.5) * 10;
+        // --- Bubble size: clip to minUSD/maxUSD if in All loans mode ---
+        let clippedUSD = Math.max(minUSD, Math.min(maxUSD, loan.principalAmountUSD));
+        const minArea = Math.PI * minR * minR;
+        const maxArea = Math.PI * maxR * maxR;
+        const valueNorm = ((clippedUSD - minUSD) / ((maxUSD - minUSD) || 1));
+        const area = minArea + valueNorm * (maxArea - minArea);
+        let r = Math.sqrt(area / Math.PI);
+        r = Math.max(minR, Math.min(maxR, r));
+        const minX = CHART_PADDING_X + r * BUBBLE_PADDING_FACTOR;
+        const maxX = WIDTH - CHART_PADDING_X - (r * BUBBLE_PADDING_FACTOR);
+        const minY = CHART_PADDING_TOP + r * BUBBLE_PADDING_FACTOR;
+        const maxY = CHART_HEIGHT - (r * BUBBLE_PADDING_FACTOR);
+        x = Math.max(minX, Math.min(maxX, x));
+        y = Math.max(minY, Math.min(maxY, y));
+        const bubble = {
+            x, y, r,
+            initialX: x, initialY: y,
+            vx: (Math.random() - 0.5) * 0.1,
+            vy: (Math.random() - 0.5) * 0.1,
+            repayment: loan.maximumRepaymentAmountUSD,
+            apr: loan.apr,
+            loanAmount: loan.principalAmountUSD,
+            dueTime: loan.dueTime, // Store the due time for date calculations
+            name: name,
+            imageUrl: imageUrl,
+            showTooltip: true,
+            visited: false,
+            protocol: loan.protocolName || '',
+            loanId: loan.loanId || '',
+            isAprOutlier: loan.apr > APR_CLIP,
+            isUsdOutlier: (loan.principalAmountUSD < minUSD || loan.principalAmountUSD > maxUSD),
+            img: null,
+            imgLoaded: false
+        };
+        bubble.img = new window.Image();
+        bubble.img.crossOrigin = "anonymous";
+        bubble.img.src = imageUrl;
+        bubble.img.onload = () => {
+            bubble.imgLoaded = true;
+            draw(); // Redraw chart when image loads
+        };
+        bubble.img.onerror = () => {
+            bubble.imgLoaded = false;
+        };
+        return bubble;
+    }
+
+    // --- Add a user-friendly message element above the chart ---
+    if (!document.getElementById('no-data-message')) {
+        const msg = document.createElement('div');
+        msg.id = 'no-data-message';
+        msg.style.display = 'none';
+        msg.style.color = '#B6B1D5';
+        msg.style.background = '#332C4B';
+        msg.style.borderRadius = '12px';
+        msg.style.padding = '16px 24px';
+        msg.style.fontFamily = "'Inter', Arial, sans-serif";
+        msg.style.fontSize = '18px';
+        msg.style.textAlign = 'center';
+        msg.style.margin = '16px auto 0 auto';
+        msg.style.maxWidth = '600px';
+        msg.innerText = 'No valid loans found for this wallet.';
+        document.querySelector('.app').insertAdjacentElement('beforebegin', msg);
+    }
+
+    // --- Clear chart and state ---
+    function clearChart() {
+        allBubbles.length = 0;
+        clusters.length = 0;
+        singleBubbles.length = 0;
+        ctx.clearRect(0, 0, WIDTH, HEIGHT);
+        drawAxes();
+        document.getElementById('no-data-message').style.display = 'block';
+    }
+
+    // --- Robust useLoanDataForBubbles with error handling and UI feedback ---
+    function getPercentile(arr, p) {
+        if (arr.length === 0) return 0;
+        const sorted = [...arr].sort((a, b) => a - b);
+        const idx = Math.floor((p / 100) * (sorted.length - 1));
+        return sorted[idx];
+    }
+    function useLoanDataForBubbles(loans) {
+        try {
+            allBubbles.length = 0;
+            clusters.length = 0;
+            singleBubbles.length = 0;
+            document.getElementById('no-data-message').style.display = 'none';
+
+            if (!loans || loans.length === 0) {
+                clearChart();
+                console.warn('API response: no loans', loans);
+                return;
+            }
+
+            // Calculate min/max for mapping
+            const minAPR = Math.min(...loans.map(l => l.apr));
+            // Dynamic APR_CLIP at 98th percentile
+            const aprs = loans.map(l => l.apr).filter(a => Number.isFinite(a));
+            const APR_CLIP = getPercentile(aprs, 98);
+            const maxAPR = APR_CLIP;
+            const minDue = Math.min(...loans.map(l => new Date(l.dueTime).getTime()));
+            const maxDue = Math.max(...loans.map(l => new Date(l.dueTime).getTime()));
+
+            // --- Dynamic bubble size range for 'All loans' ---
+            let minUSD, maxUSD, sizeClipNote = '';
+            const isAllLoansMode = (window.lastWalletSelected === '__ALL__');
+            let minR, maxR;
+            if (isAllLoansMode) {
+                minR = 4;
+                maxR = 16;
+            } else {
+                minR = 10;
+                maxR = 40;
+            }
+            if (isAllLoansMode) {
+                const usds = loans.map(l => l.principalAmountUSD).filter(Number.isFinite);
+                minUSD = getPercentile(usds, 2);
+                maxUSD = getPercentile(usds, 98);
+                sizeClipNote = "Bubble sizes in 'All loans' view are clipped to the 2nd–98th percentile for readability.";
+            } else {
+                minUSD = Math.min(...loans.map(l => l.principalAmountUSD));
+                maxUSD = Math.max(...loans.map(l => l.principalAmountUSD));
+                sizeClipNote = '';
+            }
+
+            // Calculate dynamic padding based on data range
+            const aprRange = maxAPR - minAPR;
+            const dueRange = maxDue - minDue;
+            const aprPadding = Math.min(Math.max(aprRange * MIN_PADDING_PERCENT, aprRange * MAX_PADDING_PERCENT), aprRange * MAX_PADDING_PERCENT);
+            const duePadding = Math.min(Math.max(dueRange * MIN_PADDING_PERCENT, dueRange * MAX_PADDING_PERCENT), dueRange * MAX_PADDING_PERCENT);
+            const paddedMinAPR = minAPR - aprPadding;
+            const paddedMaxAPR = maxAPR + aprPadding;
+            const paddedMinDue = minDue - duePadding;
+            const paddedMaxDue = maxDue + duePadding;
+            PADDED_MIN_DATE = paddedMinDue;
+            PADDED_MAX_DATE = paddedMaxDue;
+
+            // Store APR_CLIP globally for tooltip/legend
+            window.APR_CLIP = APR_CLIP;
+            window.USD_CLIP_NOTE = sizeClipNote;
+            window.USD_CLIP_MIN = minUSD;
+            window.USD_CLIP_MAX = maxUSD;
+
+            let validCount = 0;
+            const validLoans = [];
+            for (const loan of loans) {
+                const bubble = createLoanBubbleFromAPI(
+                    loan, paddedMinAPR, paddedMaxAPR, paddedMinDue, paddedMaxDue,
+                    minUSD, maxUSD, APR_CLIP, minR, maxR
+                );
+                if (bubble) {
+                    allBubbles.push(bubble);
+                    validLoans.push(loan);
+                    validCount++;
+                }
+            }
+            if (validCount === 0) {
+                clearChart();
+                console.warn('API response:', loans);
+                console.warn('Filtered valid loans:', validLoans);
+                return;
+            }
+            findClusters(allBubbles);
+        } catch (err) {
+            clearChart();
+            console.error('Error processing loan data:', err);
+        }
+    }
+
+    // --- Detect Overlaps and Form Clusters ---
+    function bubblesOverlap(b1, b2) {
+        const dx = b1.x - b2.x;
+        const dy = b1.y - b2.y;
+        const dist = Math.hypot(dx, dy);
+        return dist < (b1.r + b2.r) * 0.98;
+    }
+
+    function findClusters(bubbles) {
+        const visited = new Set();
+        const clusterMap = new Map();
+        for (const b of bubbles) {
+            if (visited.has(b)) continue;
+            const cluster = [];
+            const queue = [b];
+            visited.add(b);
+            while (queue.length > 0) {
+                const current = queue.pop();
+                cluster.push(current);
+                for (const other of bubbles) {
+                    if (!visited.has(other) && bubblesOverlap(current, other)) {
+                        visited.add(other);
+                        queue.push(other);
+                    }
+                }
+            }
+            const clusterSize = cluster.length;
+            for (const bubble of cluster) {
+                clusterMap.set(bubble, clusterSize);
+            }
+            if (clusterSize > 1) {
+                clusters.push({ 
+                    bubbles: cluster, 
+                    state: "idle", 
+                    hovering: false, 
+                    revertTimer: null, 
+                    frameCount: 0,
+                    size: clusterSize
+                });
+            } else {
+                singleBubbles.push(cluster[0]);
+                // Defensive: log single-loan cluster
+                console.info('Single-loan cluster detected:', cluster[0]);
+            }
+        }
+        // Second pass: update initial velocities based on cluster size
+        for (const b of bubbles) {
+            const clusterSize = clusterMap.get(b) || 1;
+            const velocityScale = Math.pow(clusterSize, VELOCITY_POWER);
+            const angle = Math.random() * Math.PI * 2;
+            b.vx = Math.cos(angle) * BASE_VELOCITY * velocityScale;
+            b.vy = Math.sin(angle) * BASE_VELOCITY * velocityScale;
+        }
+    }
+
+    // Add this function to measure overlap between two bubbles
+    function getBubbleOverlap(b1, b2) {
+        const dx = b1.x - b2.x;
+        const dy = b1.y - b2.y;
+        const dist = Math.hypot(dx, dy);
+        const overlap = (b1.r + b2.r) - dist;
+        return overlap;
+    }
+
+    // --- Physics Functions ---
+    function applySpringForces(cluster) {
+        const bubbles = cluster.bubbles;
+        const clusterSize = cluster.size;
+        // Calculate overlap counts for each bubble
+        const overlapCounts = new Map();
+        for (let i = 0; i < bubbles.length; i++) {
+            let overlaps = 0;
+            for (let j = 0; j < bubbles.length; j++) {
+                if (i !== j && getBubbleOverlap(bubbles[i], bubbles[j]) > 0.1 * (bubbles[i].r + bubbles[j].r)) {
+                    overlaps++;
+                }
+            }
+            overlapCounts.set(bubbles[i], overlaps);
+        }
+        // --- Always apply spring/attraction force to all pairs ---
+        for (let i = 0; i < bubbles.length; i++) {
+            for (let j = i + 1; j < bubbles.length; j++) {
+                const ci = bubbles[i];
+                const cj = bubbles[j];
+                const dx = cj.x - ci.x;
+                const dy = cj.y - ci.y;
+                const dist = Math.hypot(dx, dy) || 1e-6;
+                const idealDist = ci.r + cj.r;
+                const displacement = dist - idealDist;
+                const overlapScale = 1 + (overlapCounts.get(ci) + overlapCounts.get(cj)) * OVERLAP_SCALE;
+                const clusterScale = 1 + (clusterSize / CLUSTER_SCALE_DIVISOR);
+                const springVariation = 1 + (Math.random() - 0.5) * 0.1;
+                let force = SPRING_CONSTANT * displacement * overlapScale * clusterScale * springVariation;
+                // Only boost force for overlapping pairs
+                if (displacement < 0 && getBubbleOverlap(ci, cj) > 0.1 * (ci.r + cj.r)) {
+                    force *= OVERLAP_FORCE_MULTIPLIER;
+                }
+                const nx = dx / dist;
+                const ny = dy / dist;
+                ci.vx += nx * force;
+                ci.vy += ny * force;
+                cj.vx -= nx * force;
+                cj.vy -= ny * force;
+            }
+        }
+        // --- Repulsion force removed: replaced by constraint-based collision resolution in updateCluster ---
+    }
+
+    function updateCluster(cluster) {
+        const bubbles = cluster.bubbles;
+        // Adaptive damping: increase for large clusters
+        const clusterSize = cluster.size;
+        let damping = BASE_DAMPING;
+        if (clusterSize > DAMPING_CLUSTER_THRESHOLD) {
+            const t = Math.min((clusterSize - DAMPING_CLUSTER_THRESHOLD) / DAMPING_CLUSTER_THRESHOLD, 1);
+            damping += t * EXTRA_DAMPING;
+        }
+        for (const c of bubbles) {
+            c.x += c.vx;
+            c.y += c.vy;
+            c.vx *= damping;
+            c.vy *= damping;
+        }
+        // --- Constraint-based collision resolution: move overlapping bubbles apart ---
+        for (let i = 0; i < bubbles.length; i++) {
+            for (let j = i + 1; j < bubbles.length; j++) {
+                const bi = bubbles[i];
+                const bj = bubbles[j];
+                const dx = bj.x - bi.x;
+                const dy = bj.y - bi.y;
+                const dist = Math.hypot(dx, dy) || 1e-6;
+                const minDist = bi.r + bj.r;
+                if (dist < minDist) {
+                    const overlap = minDist - dist;
+                    const nx = dx / dist;
+                    const ny = dy / dist;
+                    // Move each bubble away from the other by half the overlap
+                    bi.x -= nx * overlap / 2;
+                    bi.y -= ny * overlap / 2;
+                    bj.x += nx * overlap / 2;
+                    bj.y += ny * overlap / 2;
+                }
+            }
+        }
+    }
+
+    function applyOutwardForce(cluster) {
+        const centerX = WIDTH / 2;
+        const centerY = HEIGHT / 2;
+        const clusterSize = cluster.size;
+        const cappedClusterSize = Math.min(clusterSize, OUTWARD_CLUSTER_CAP);
+        const outwardForce = OUTWARD_FORCE * (1 + Math.pow(cappedClusterSize, OUTWARD_FORCE_POWER) / OUTWARD_FORCE_DIVISOR);
+        for (const c of cluster.bubbles) {
+            const dx = c.x - centerX;
+            const dy = c.y - centerY;
+            const dist = Math.hypot(dx, dy) || 1e-6;
+            c.vx += (dx / dist) * outwardForce;
+            c.vy += (dy / dist) * outwardForce;
+        }
+    }
+
+    function revertClusterSmoothly(cluster) {
+        let allClose = true;
+        for (const b of cluster.bubbles) {
+            b.x += (b.initialX - b.x) * REVERT_SPEED;
+            b.y += (b.initialY - b.y) * REVERT_SPEED;
+
+            const dx = b.x - b.initialX;
+            const dy = b.y - b.initialY;
+            if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+                allClose = false;
+            }
+        }
+
+        if (allClose) {
+            for (const b of cluster.bubbles) {
+                b.x = b.initialX;
+                b.y = b.initialY;
+                b.vx = 0;
+                b.vy = 0;
+                b.showTooltip = false;
+            }
+            cluster.state = "idle";
+            cluster.frameCount = 0;
+        }
+    }
+
+    // --- D3-inspired time scale and tick generator ---
+    function timeScale(domain, range) {
+        const [d0, d1] = domain;
+        const [r0, r1] = range;
+        return d => r0 + ((d - d0) / (d1 - d0)) * (r1 - r0);
+    }
+
+    // Returns an array of Date objects for nice ticks, adapting to the span
+    function niceDateTicks(start, stop, maxCount) {
+        const msSecond = 1000;
+        const msMinute = 60 * msSecond;
+        const msHour = 60 * msMinute;
+        const msDay = 24 * msHour;
+        const msWeek = 7 * msDay;
+        const msMonth = msDay * 30;
+        const msYear = msDay * 365;
+        const span = stop - start;
+        let step, unit, format;
+        if (span < msHour * 12) {
+            step = Math.ceil(span / msHour / maxCount);
+            unit = 'hour';
+            format = d => d.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'});
+        } else if (span < msDay * 2) {
+            step = Math.ceil(span / msHour / maxCount);
+            unit = 'hour';
+            format = d => d.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'});
+        } else if (span < msWeek * 2) {
+            step = Math.ceil(span / msDay / maxCount);
+            unit = 'day';
+            format = d => d.toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
+        } else if (span < msMonth * 2) {
+            step = Math.ceil(span / msDay / maxCount * 2);
+            unit = 'day';
+            format = d => d.toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
+        } else if (span < msYear) {
+            step = Math.ceil(span / msMonth / maxCount);
+            unit = 'month';
+            format = d => d.toLocaleDateString('en-US', {month: 'short', year: '2-digit'});
+        } else {
+            step = Math.ceil(span / msYear / maxCount);
+            unit = 'year';
+            format = d => d.getFullYear();
+        }
+        const ticks = [];
+        let d = new Date(start);
+        d.setSeconds(0,0);
+        d.setMinutes(0);
+        d.setHours(0);
+        if (unit === 'month') d.setDate(1);
+        if (unit === 'year') { d.setMonth(0); d.setDate(1); }
+        while (d.getTime() < stop) {
+            ticks.push(new Date(d));
+            if (unit === 'year') d.setFullYear(d.getFullYear() + step);
+            else if (unit === 'month') d.setMonth(d.getMonth() + step);
+            else if (unit === 'week') d.setDate(d.getDate() + 7 * step);
+            else if (unit === 'day') d.setDate(d.getDate() + step);
+            else if (unit === 'hour') d.setHours(d.getHours() + step);
+        }
+        if (ticks.length < 2 || ticks[ticks.length-1].getTime() < stop) {
+            ticks.push(new Date(stop));
+        }
+        return {ticks, format};
+    }
+
+    // --- D3-inspired linear tick generator for APR ---
+    function niceLinearTicks(min, max, maxCount) {
+        // D3-like nice ticks for linear scale
+        const span = max - min;
+        if (span === 0) return [min];
+        const step = Math.pow(10, Math.floor(Math.log10(span / maxCount)));
+        const err = maxCount / (span / step);
+        let niceStep = step;
+        if (err <= 0.15) niceStep *= 10;
+        else if (err <= 0.35) niceStep *= 5;
+        else if (err <= 0.75) niceStep *= 2;
+        const niceMin = Math.floor(min / niceStep) * niceStep;
+        const niceMax = Math.ceil(max / niceStep) * niceStep;
+        const ticks = [];
+        for (let v = niceMin; v <= niceMax + 0.5 * niceStep; v += niceStep) {
+            ticks.push(Number(v.toFixed(6)));
+        }
+        return ticks;
+    }
+
+    // --- Draw Axes ---
+    function drawAxes() {
+        ctx.save();
+        ctx.lineWidth = 1;
+        
+        // Draw Y axis APR ticks, grid lines, and labels (D3-inspired)
+        if (allBubbles.length > 0) {
+            const loans = allBubbles;
+            const minAPR = Math.min(...loans.map(l => l.apr));
+            const maxAPR = Math.max(...loans.map(l => l.apr));
+            let aprTicks = niceLinearTicks(minAPR, maxAPR, 8);
+            if (aprTicks.length > 1) aprTicks = aprTicks.slice(1);
+            aprTicks.forEach(tick => {
+                const y = CHART_PADDING_TOP + (CHART_HEIGHT - CHART_PADDING_TOP) * (1 - (tick - minAPR) / ((maxAPR - minAPR) || 1));
+                // Draw grid line
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; // semi-transparent white
+                ctx.beginPath();
+                ctx.moveTo(CHART_PADDING_X, y);
+                ctx.lineTo(WIDTH, y);
+                ctx.stroke();
+                // Draw tick in left margin
+                ctx.strokeStyle = '#B6B1D5'; // lighter color for axis
+                ctx.beginPath();
+                ctx.moveTo(CHART_PADDING_X - TICK_LENGTH, y);
+                ctx.lineTo(CHART_PADDING_X, y);
+                ctx.stroke();
+                // Draw label in left margin
+                ctx.fillStyle = '#B6B1D5'; // lighter color for labels
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'middle';
+                ctx.font = '13px Inter, Arial, sans-serif';
+                ctx.fillText(tick % 1 === 0 ? `${tick}` : tick.toFixed(2), CHART_PADDING_X - TICK_LENGTH - TICK_PADDING, y);
+            });
+        }
+        
+        // Draw X axis date ticks and grid lines (D3-inspired)
+        if (allBubbles.length > 0 && PADDED_MIN_DATE !== null && PADDED_MAX_DATE !== null) {
+            const paddedMinDate = PADDED_MIN_DATE;
+            const paddedMaxDate = PADDED_MAX_DATE;
+            const scale = timeScale([paddedMinDate, paddedMaxDate], [CHART_PADDING_X, WIDTH - CHART_PADDING_X]);
+            const {ticks: dateTicks, format: dateFormat} = niceDateTicks(paddedMinDate, paddedMaxDate, DATE_TICK_COUNT);
+            dateTicks.forEach(date => {
+                const x = scale(date.getTime());
+                // Draw grid line
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; // semi-transparent white
+                ctx.beginPath();
+                ctx.moveTo(x, CHART_PADDING_TOP);
+                ctx.lineTo(x, CHART_HEIGHT);
+                ctx.stroke();
+                // Draw tick
+                ctx.strokeStyle = '#B6B1D5'; // lighter color for axis
+                ctx.beginPath();
+                ctx.moveTo(x, CHART_HEIGHT);
+                ctx.lineTo(x, CHART_HEIGHT + TICK_LENGTH);
+                ctx.stroke();
+                // Draw date label in the dark area, above the bottom padding
+                ctx.fillStyle = '#B6B1D5'; // lighter color for labels
+                ctx.textAlign = 'center';
+                const dateStr = dateFormat(date);
+                ctx.fillText(dateStr, x, CHART_HEIGHT + TICK_LENGTH + TICK_PADDING + 10);
+            });
+        }
+        
+        ctx.restore();
+    }
+
+    // --- Draw Function ---
+    function draw() {
+        ctx.clearRect(0, 0, WIDTH, HEIGHT);
+        // Draw top margin (dark for top padding)
+        ctx.fillStyle = '#221E37';
+        ctx.fillRect(0, 0, WIDTH, CHART_PADDING_TOP);
+        // Draw left margin (dark for y-axis labels)
+        ctx.fillStyle = '#221E37';
+        ctx.fillRect(0, CHART_PADDING_TOP, CHART_PADDING_X, CHART_HEIGHT - CHART_PADDING_TOP);
+        // Draw label area (dark)
+        ctx.fillStyle = '#221E37';
+        ctx.fillRect(0, CHART_HEIGHT, WIDTH, HEIGHT - CHART_HEIGHT);
+        // Draw plot area (dark), starting exactly at the y-axis line
+        ctx.fillStyle = '#221E37';
+        ctx.fillRect(CHART_PADDING_X - TICK_LENGTH, CHART_PADDING_TOP, WIDTH - (CHART_PADDING_X - TICK_LENGTH), CHART_HEIGHT - CHART_PADDING_TOP);
+        // Draw axes and bubbles
+        drawAxes();
+        // 1. Draw single bubbles and non-expanded clusters
+        for (const b of singleBubbles) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+            ctx.closePath();
+            if (showImages && b.img && b.img.complete && b.img.naturalWidth > 0) {
+                ctx.clip();
+                ctx.drawImage(b.img, b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
+            } else {
+                ctx.fillStyle = PROTOCOL_COLORS[b.protocol] || DEFAULT_PROTOCOL_COLOR;
+                ctx.globalAlpha = 0.65;
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+            ctx.restore();
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+        }
+        for (const cluster of clusters) {
+            if (cluster.state !== "expanded" && cluster.state !== "expanding") {
+                for (const b of cluster.bubbles) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                    ctx.closePath();
+                    if (showImages && b.img && b.img.complete && b.img.naturalWidth > 0) {
+                        ctx.clip();
+                        ctx.drawImage(b.img, b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
+                    } else {
+                        ctx.fillStyle = PROTOCOL_COLORS[b.protocol] || DEFAULT_PROTOCOL_COLOR;
+                        ctx.globalAlpha = 0.65;
+                        ctx.fill();
+                        ctx.globalAlpha = 1.0;
+                    }
+                    ctx.restore();
+                    ctx.setLineDash([6, 6]);
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+        }
+        // 2. Draw expanded (and expanding) clusters on top
+        for (const cluster of clusters) {
+            if (cluster.state === "expanded" || cluster.state === "expanding") {
+                for (const b of cluster.bubbles) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                    ctx.closePath();
+                    if (showImages && b.img && b.img.complete && b.img.naturalWidth > 0) {
+                        ctx.clip();
+                        ctx.drawImage(b.img, b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
+                    } else {
+                        ctx.fillStyle = PROTOCOL_COLORS[b.protocol] || DEFAULT_PROTOCOL_COLOR;
+                        ctx.globalAlpha = 0.65;
+                        ctx.fill();
+                        ctx.globalAlpha = 1.0;
+                    }
+                    ctx.restore();
+                    ctx.setLineDash([6, 6]);
+                    ctx.beginPath();
+                    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+            }
+        }
+    }
+
+    // --- Mouse Handling ---
+    canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        mouseX = e.clientX - rect.left;
+        mouseY = e.clientY - rect.top;
+
+        for (const cluster of clusters) {
+            let hovering = false;
+            for (const b of cluster.bubbles) {
+                const dx = mouseX - b.x;
+                const dy = mouseY - b.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist < b.r) {
+                    hovering = true;
+                    break;
+                }
+            }
+
+            if (hovering) {
+                cluster.hovering = true;
+                if (cluster.state === "idle") {
+                    cluster.state = "expanding";
+                    applyOutwardForce(cluster);
+                    cluster.frameCount = 0;
+                }
+                if (cluster.revertTimer) {
+                    clearTimeout(cluster.revertTimer);
+                    cluster.revertTimer = null;
+                }
+            } else {
+                if (cluster.hovering) {
+                    cluster.hovering = false;
+                    if (!cluster.revertTimer) {
+                        cluster.revertTimer = setTimeout(() => {
+                            if (!cluster.hovering) {
+                                cluster.state = "reverting";
+                            }
+                        }, REVERT_DELAY);
+                    }
+                }
+            }
+        }
+    });
+
+    // --- Tooltip update ---
+    function updateTooltip() {
+        let closest = null;
+        let closestDist = Infinity;
+
+        for (const b of singleBubbles) {
+            const dx = mouseX - b.x;
+            const dy = mouseY - b.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < b.r && dist < closestDist && b.showTooltip) {
+                closest = b;
+                closestDist = dist;
+            }
+        }
+        for (const cluster of clusters) {
+            for (const b of cluster.bubbles) {
+                const dx = mouseX - b.x;
+                const dy = mouseY - b.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist < b.r && dist < closestDist && b.showTooltip) {
+                    closest = b;
+                    closestDist = dist;
+                }
+            }
+        }
+        if (closest) {
+            // Format expiry (date and time)
+            let expiry = '';
+            let expiryTime = '';
+            if (closest.dueTime) {
+                const d = new Date(closest.dueTime);
+                expiry = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+                expiryTime = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            }
+            // Format repayment
+            const repayment = closest.repayment ? closest.repayment.toLocaleString() : '';
+            // --- Calculate Total Due (robust cumulative USD from soonest to hovered loan by due date) ---
+            // Only sum over bubbles for the current wallet (allBubbles)
+            const valid = allBubbles.filter(b =>
+                b.dueTime && !isNaN(new Date(b.dueTime).getTime()) &&
+                Number.isFinite(b.repayment) &&
+                b.loanId // or another unique identifier
+            );
+            // Sort by due date ascending, then by loanId (string compare for stability)
+            valid.sort((a, b) => {
+                const dateDiff = new Date(a.dueTime) - new Date(b.dueTime);
+                if (dateDiff !== 0) return dateDiff;
+                return String(a.loanId).localeCompare(String(b.loanId));
+            });
+            // Find hovered loan's index (by loanId)
+            const hoveredIndex = valid.findIndex(b => b.loanId === closest.loanId);
+            let totalDue = 0;
+            if (hoveredIndex !== -1) {
+                for (let i = 0; i <= hoveredIndex; i++) {
+                    totalDue += valid[i].repayment;
+                }
+            } else {
+                totalDue = Number.isFinite(closest.repayment) ? closest.repayment : 0; // fallback
+            }
+            // Build HTML
+            tooltip.innerHTML = `
+                <div class="tooltip-header">
+                    <img class="tooltip-img" src="${closest.imageUrl}" alt="NFT" />
+                    <div class="tooltip-title">${closest.name || 'NFT Loan'}</div>
+                </div>
+                <div class="tooltip-row">
+                    <span class="tooltip-label">Protocol</span>
+                    <span class="tooltip-value">${closest.protocol || 'Unknown'}</span>
+                </div>
+                <div class="tooltip-row">
+                    <span class="tooltip-label">APR</span>
+                    <span class="tooltip-value">${closest.apr ? closest.apr.toFixed(2) : '--'}%${closest.isAprOutlier ? ' <span style=\'color:#FFB300\'>(outlier)</span>' : ''}</span>
+                </div>
+                <div class="tooltip-row">
+                    <span class="tooltip-label">Repayment</span>
+                    <span class="tooltip-value">${repayment} <span class="tooltip-value usdc">USDC</span></span>
+                </div>
+                <div class="tooltip-row">
+                    <span class="tooltip-label">Repayment Date</span>
+                    <span class="tooltip-value">${expiry} ${expiryTime}</span>
+                </div>
+                <div class="tooltip-row">
+                    <span class="tooltip-label">Total Due</span>
+                    <span class="tooltip-value">${totalDue.toLocaleString()} <span class="tooltip-value usdc">USDC</span></span>
+                </div>
+                ${closest.isUsdOutlier ? `<div class='tooltip-row'><span class='tooltip-label'></span><span class='tooltip-value' style='color:#FFB300'>(size outlier)</span></div>` : ''}
+            `;
+            tooltip.style.left = (closest.x + canvas.offsetLeft + 20) + "px";
+            tooltip.style.top = (closest.y + canvas.offsetTop - 40) + "px";
+            tooltip.style.visibility = "visible";
+        } else {
+            tooltip.style.visibility = "hidden";
+        }
+    }
+
+    // --- Add try/catch to wallet change event ---
+    walletSelect.addEventListener('change', async (e) => {
+        try {
+            const selectedWallet = e.target.value;
+            window.lastWalletSelected = selectedWallet;
+            if (selectedWallet) {
+                const data = await fetchLoanData(selectedWallet);
+                if (data && data.data && data.data.length > 0) {
+                    useLoanDataForBubbles(data.data);
+                } else {
+                    clearChart();
+                    console.warn('API response: no loans', data);
+                }
+            }
+        } catch (err) {
+            clearChart();
+            console.error('Error loading wallet data:', err);
+        }
+    });
+
+    // --- D3-based Circle Packing for Cluster Expansion ---
+    // Helper to pack a cluster's bubbles using d3.packSiblings
+    function packClusterBubbles(cluster) {
+        // d3.packSiblings expects an array of objects with x, y, r
+        // We'll use the current radii, and pack around (0,0)
+        const packed = cluster.bubbles.map(b => ({...b, x: 0, y: 0, r: b.r}));
+        d3.packSiblings(packed);
+        // Compute centroid of the cluster's current positions
+        let sumX = 0, sumY = 0;
+        for (const b of cluster.bubbles) {
+            sumX += b.x;
+            sumY += b.y;
+        }
+        const centroidX = sumX / cluster.bubbles.length;
+        const centroidY = sumY / cluster.bubbles.length;
+        // Compute bounding box of packed cluster
+        const minX = Math.min(...packed.map(b => b.x - b.r));
+        const maxX = Math.max(...packed.map(b => b.x + b.r));
+        const minY = Math.min(...packed.map(b => b.y - b.r));
+        const maxY = Math.max(...packed.map(b => b.y + b.r));
+        const packedCenterX = (minX + maxX) / 2;
+        const packedCenterY = (minY + maxY) / 2;
+        // Offset packed positions to center at the cluster's centroid
+        for (let i = 0; i < cluster.bubbles.length; i++) {
+            cluster.bubbles[i].packedX = centroidX + (packed[i].x - packedCenterX);
+            cluster.bubbles[i].packedY = centroidY + (packed[i].y - packedCenterY);
+        }
+        // --- Post-packing boundary correction (no scaling) ---
+        // Calculate min/max after centering
+        let shiftX = 0, shiftY = 0;
+        const leftBound = CHART_PADDING_X;
+        const rightBound = WIDTH - CHART_PADDING_X;
+        const topBound = CHART_PADDING_TOP;
+        const bottomBound = CHART_HEIGHT;
+        // Find how much we need to shift to keep all bubbles inside bounds
+        let minBubbleX = Infinity, maxBubbleX = -Infinity, minBubbleY = Infinity, maxBubbleY = -Infinity;
+        for (const b of cluster.bubbles) {
+            minBubbleX = Math.min(minBubbleX, b.packedX - b.r);
+            maxBubbleX = Math.max(maxBubbleX, b.packedX + b.r);
+            minBubbleY = Math.min(minBubbleY, b.packedY - b.r);
+            maxBubbleY = Math.max(maxBubbleY, b.packedY + b.r);
+        }
+        if (minBubbleX < leftBound) shiftX = leftBound - minBubbleX;
+        if (maxBubbleX > rightBound) shiftX = rightBound - maxBubbleX;
+        if (minBubbleY < topBound) shiftY = topBound - minBubbleY;
+        if (maxBubbleY > bottomBound) shiftY = bottomBound - maxBubbleY;
+        // Apply the shift to all packed bubbles
+        for (const b of cluster.bubbles) {
+            b.packedX += shiftX;
+            b.packedY += shiftY;
+        }
+    }
+
+    // Animate bubbles to packed positions
+    function animateClusterToPacked(cluster, t) {
+        for (const b of cluster.bubbles) {
+            b.x += (b.packedX - b.x) * t;
+            b.y += (b.packedY - b.y) * t;
+        }
+    }
+
+    // --- Animation loop ---
+    function animate() {
+        for (const cluster of clusters) {
+            if (cluster.state === "expanding") {
+                // On first frame, compute packed positions
+                if (!cluster.packedInitialized) {
+                    packClusterBubbles(cluster);
+                    cluster.packedInitialized = true;
+                }
+                // Animate bubbles to packed positions
+                animateClusterToPacked(cluster, 0.18); // t controls animation speed
+                cluster.frameCount++;
+                if (cluster.frameCount >= MAX_FRAMES) {
+                    cluster.state = "expanded";
+                    for (const b of cluster.bubbles) {
+                        b.showTooltip = true;
+                    }
+                }
+            } else if (cluster.state === "reverting") {
+                revertClusterSmoothly(cluster);
+                cluster.packedInitialized = false;
+            }
+        }
+        draw();
+        updateTooltip();
+        requestAnimationFrame(animate);
+    }
+
+    // Start animation
+    animate();
+
+    // --- Responsive Resize Handler ---
+    function resizeChart() {
+        const container = document.querySelector('.chart-wrapper');
+        const containerWidth = container.clientWidth;
+        const containerHeight = container.clientHeight;
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(containerWidth * dpr);
+        canvas.height = Math.round(containerHeight * dpr);
+        canvas.style.width = containerWidth + 'px';
+        canvas.style.height = containerHeight + 'px';
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.scale(dpr, dpr);
+        WIDTH = containerWidth;
+        HEIGHT = containerHeight;
+        CHART_HEIGHT = Math.round(HEIGHT * 0.88);
+        CHART_PADDING_X = 24;
+        CHART_PADDING_TOP = Math.round(HEIGHT * 0.03);
+        CHART_PADDING_BOTTOM = Math.round(HEIGHT * 0.09);
+        draw();
+    }
+
+    // Remove the aspect ratio function and use container dimensions
+    window.addEventListener('resize', resizeChart);
+    // Initial set
+    resizeChart();
+
+    // Add overlap stats to the animation loop for debugging
+    function logOverlapStats() {
+        let totalOverlap = 0;
+        let maxOverlap = 0;
+        let overlapCount = 0;
+        for (let i = 0; i < allBubbles.length; i++) {
+            for (let j = i + 1; j < allBubbles.length; j++) {
+                const b1 = allBubbles[i];
+                const b2 = allBubbles[j];
+                const overlap = getBubbleOverlap(b1, b2);
+                if (overlap > 0) {
+                    totalOverlap += overlap;
+                    maxOverlap = Math.max(maxOverlap, overlap);
+                    overlapCount++;
+                }
+            }
+        }
+        console.log(`Total overlap: ${totalOverlap.toFixed(2)}, Max overlap: ${maxOverlap.toFixed(2)}, Overlapping pairs: ${overlapCount}`);
+    }
+
+    // --- Add a note below the chart for APR and USD clipping transparency ---
+    if (!document.getElementById('apr-clip-note')) {
+        const note = document.createElement('div');
+        note.id = 'apr-clip-note';
+        note.style.color = '#FFB300';
+        note.style.background = 'rgba(255,255,255,0.07)';
+        note.style.borderRadius = '8px';
+        note.style.padding = '8px 16px';
+        note.style.fontFamily = "'Inter', Arial, sans-serif";
+        note.style.fontSize = '14px';
+        note.style.textAlign = 'center';
+        note.style.margin = '8px auto 0 auto';
+        note.style.maxWidth = '600px';
+        note.innerText = 'APR values above the 98th percentile are shown at the top of the chart and marked as outliers.' + (window.USD_CLIP_NOTE ? (' ' + window.USD_CLIP_NOTE) : '');
+        document.querySelector('.app').insertAdjacentElement('afterend', note);
+    }
+
+    // Add toggle button handler
+    imageToggle.addEventListener('click', () => {
+        showImages = !showImages;
+        imageToggle.textContent = showImages ? 'Hide Images' : 'Show Images';
+        imageToggle.classList.toggle('active', showImages);
+        draw(); // Redraw the chart with new setting
+    });
+    </script>
+</body>
+</html> 

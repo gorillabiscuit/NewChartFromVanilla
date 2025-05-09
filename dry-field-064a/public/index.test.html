@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loan Bubble Graph - Test Version with Click</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        /* ... existing styles ... */
+        .selected-bubble {
+            stroke: #5EC6A6 !important;
+            stroke-width: 3px !important;
+        }
+        #selected-loan-details {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #332C4B;
+            color: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+            max-width: 300px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <select id="walletSelect" class="wallet-selector">
+        <option value="">Select a wallet...</option>
+    </select>
+    <div class="app">
+        <button id="imageToggle" class="toggle-button">Show Images</button>
+        <div class="chart-wrapper">
+            <canvas id="canvas"></canvas>
+            <div id="tooltip"></div>
+        </div>
+    </div>
+    <div id="selected-loan-details"></div>
+    <script>
+    // ... existing script content ...
+
+    // Add click handler
+    canvas.addEventListener('click', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        const clickY = e.clientY - rect.top;
+        
+        let clickedBubble = null;
+        let closestDist = Infinity;
+        
+        // Check single bubbles
+        for (const b of singleBubbles) {
+            const dx = clickX - b.x;
+            const dy = clickY - b.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < b.r && dist < closestDist) {
+                clickedBubble = b;
+                closestDist = dist;
+            }
+        }
+        
+        // Check clustered bubbles
+        for (const cluster of clusters) {
+            for (const b of cluster.bubbles) {
+                const dx = clickX - b.x;
+                const dy = clickY - b.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist < b.r && dist < closestDist) {
+                    clickedBubble = b;
+                    closestDist = dist;
+                }
+            }
+        }
+        
+        if (clickedBubble) {
+            // Clear previous selection
+            for (const b of allBubbles) {
+                b.selected = false;
+            }
+            
+            // Set new selection
+            clickedBubble.selected = true;
+            
+            // Update details panel
+            const detailsPanel = document.getElementById('selected-loan-details');
+            detailsPanel.style.display = 'block';
+            detailsPanel.innerHTML = `
+                <h3>${clickedBubble.name || 'NFT Loan'}</h3>
+                <p>Protocol: ${clickedBubble.protocol || 'Unknown'}</p>
+                <p>APR: ${clickedBubble.apr.toFixed(2)}%</p>
+                <p>Repayment: ${clickedBubble.repayment.toLocaleString()} USDC</p>
+                <p>Due: ${new Date(clickedBubble.dueTime).toLocaleDateString()}</p>
+            `;
+            
+            // Redraw to show selection
+            draw();
+        }
+    });
+
+    // Modify draw function to show selection
+    const originalDraw = draw;
+    draw = function() {
+        originalDraw();
+        
+        // Draw selection highlight
+        for (const b of allBubbles) {
+            if (b.selected) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                ctx.strokeStyle = '#5EC6A6';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+    };
+
+    // ... rest of existing script ...
+    </script>
+</body>
+</html> 
