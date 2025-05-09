@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Loan Bubble Graph - Corrected with Dense Overlaps</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <link rel="stylesheet" href="chart-styles.css">
     <style>
         body {
             margin: 0;
@@ -187,6 +188,11 @@
             <div id="tooltip"></div>
         </div>
     </div>
+
+    <!-- Core modules -->
+    <script src="src/render/CanvasRenderer.js"></script>
+    <script src="src/physics/PhysicsEngine.js"></script>
+    <script src="visualization.js"></script>
     <script>
     // --- DOM and Canvas Setup ---
     const canvas = document.getElementById('canvas');

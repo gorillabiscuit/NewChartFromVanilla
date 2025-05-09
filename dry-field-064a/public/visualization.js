@@ -46,11 +46,15 @@ class VisualizationManager {
         // Initialize canvas renderer
         this.canvasRenderer = new CanvasRenderer(canvas);
         
+        // Initialize physics engine
+        this.physicsEngine = new PhysicsEngine();
+        
         // State
         this.bubbles = [];
         this.showImages = false;
         this.selectedProtocol = null;
         this.selectedCollection = null;
+        this.hoveredBubble = null;
         
         // Layout constants
         this.WIDTH = canvas.width;
@@ -60,8 +64,7 @@ class VisualizationManager {
         this.CHART_PADDING_TOP = Math.round(this.HEIGHT * 0.03);
         this.CHART_PADDING_BOTTOM = Math.round(this.HEIGHT * 0.09);
         
-        // Physics constants
-        this.MAX_FRAMES = 30;
+        // Protocol colors
         this.PROTOCOL_COLORS = {
             'aave': '#B6509E',
             'compound': '#00D395',
@@ -84,6 +87,41 @@ class VisualizationManager {
 
         this.xDomain = [new Date(2020, 0, 1).getTime(), new Date().getTime()];
         this.yDomain = [0, 100];
+
+        // Set up event listeners
+        this.setupEventListeners();
+    }
+
+    setupEventListeners() {
+        this.canvas.addEventListener('mousemove', (e) => {
+            const rect = this.canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Find hovered bubble
+            const hoveredBubble = this.bubbles.find(bubble => {
+                const dx = bubble.x - x;
+                const dy = bubble.y - y;
+                return Math.sqrt(dx * dx + dy * dy) < bubble.r;
+            });
+
+            if (hoveredBubble !== this.hoveredBubble) {
+                this.hoveredBubble = hoveredBubble;
+                if (hoveredBubble) {
+                    // Start clustering animation
+                    const clusterPositions = this.physicsEngine.calculateClusterPositions(hoveredBubble);
+                    this.physicsEngine.setTargetPositions(clusterPositions);
+                } else {
+                    // Reset to original positions
+                    this.physicsEngine.reset();
+                }
+            }
+        });
+
+        this.canvas.addEventListener('mouseleave', () => {
+            this.hoveredBubble = null;
+            this.physicsEngine.reset();
+        });
     }
 
     generateAPRTicks(min, max) {
@@ -225,6 +263,7 @@ class VisualizationManager {
                 const date = new Date(2020, 0, 1 + Math.floor(Math.random() * 1000));
                 
                 this.bubbles.push({
+                    id: `bubble-${i}`,
                     x: this.CHART_PADDING_X + Math.random() * (this.WIDTH - 2 * this.CHART_PADDING_X),
                     y: this.CHART_PADDING_TOP + Math.random() * (this.CHART_HEIGHT - this.CHART_PADDING_TOP),
                     r: 10 + Math.random() * 20,
@@ -235,9 +274,15 @@ class VisualizationManager {
                     imageUrl: 'https://via.placeholder.com/56x56.png?text=NFT',
                     img: null,
                     imgLoaded: false,
-                    color: this.PROTOCOL_COLORS[protocol] || this.DEFAULT_PROTOCOL_COLOR
+                    color: this.PROTOCOL_COLORS[protocol] || this.DEFAULT_PROTOCOL_COLOR,
+                    vx: 0,
+                    vy: 0
                 });
             }
+
+            // Update physics engine with new bubbles
+            this.physicsEngine.setBubbles(this.bubbles);
+            this.physicsEngine.start();
 
             // Load images if showImages is true
             if (this.showImages) {
