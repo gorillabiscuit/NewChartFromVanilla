@@ -110,6 +110,8 @@
     import { drawAxes, draw, timeScale, niceDateTicks, niceLinearTicks, TICK_LENGTH, TICK_PADDING, DATE_TICK_COUNT } from './renderUtils.js';
     import { updateTooltip, initializeTooltip, setupTooltipStyles } from './uiComponents.js';
     import { fetchLoanData, loadBubbleImages } from './dataService.js';
+    import { packClusterBubbles, animateClusterToPacked, updateClusterAnimation } from './clusterLayout.js';
+    import { createNoDataMessage, setupWalletDropdown, setupImageToggle, setupResponsiveCanvas } from './uiManager.js';
     // --- DOM and Canvas Setup ---
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -175,23 +177,30 @@
     };
     const DEFAULT_PROTOCOL_COLOR = '#888888';
 
-    // Populate wallet dropdown
-    const walletSelect = document.getElementById('walletSelect');
-    walletSelect.innerHTML = '<option value="">Select a wallet...</option>';
-    // Add 'All loans' option
-    const allOption = document.createElement('option');
-    allOption.value = '__ALL__';
-    allOption.textContent = 'All loans';
-    walletSelect.appendChild(allOption);
-    WALLETS.forEach((wallet, index) => {
-        const option = document.createElement('option');
-        option.value = wallet;
-        option.textContent = `Wallet ${index + 1}`;
-        walletSelect.appendChild(option);
+    // Create no-data message
+    const noDataMessage = createNoDataMessage();
+
+    // Set up the wallet dropdown
+    setupWalletDropdown(walletSelect, WALLETS);
+
+    // Set up image toggle
+    setupImageToggle(imageToggle, (showImagesState) => {
+        showImages = showImagesState;
+        draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
     });
-    // Set default wallet (first in the new list)
-    walletSelect.value = WALLETS[0];
-    window.lastWalletSelected = WALLETS[0]; // Initialize the last selected wallet
+
+    // Set up responsive canvas sizing
+    setupResponsiveCanvas(canvas, ctx, (dimensions) => {
+        WIDTH = dimensions.width;
+        HEIGHT = dimensions.height;
+        CHART_HEIGHT = dimensions.chartHeight;
+        CHART_PADDING_X = dimensions.chartPaddingX;
+        CHART_PADDING_TOP = dimensions.chartPaddingTop;
+        CHART_PADDING_BOTTOM = dimensions.chartPaddingBottom;
+        
+        draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
+    });
+
     // Trigger initial load with image handling
     fetchLoanData(WALLETS[0]).then(data => {
         if (data && data.data && data.data.length > 0) {
@@ -225,26 +234,10 @@
                     }
                 }
             );
+            
+            noDataMessage.style.display = 'none';
         }
     });
-
-    // --- Add a user-friendly message element above the chart ---
-    if (!document.getElementById('no-data-message')) {
-        const msg = document.createElement('div');
-        msg.id = 'no-data-message';
-        msg.style.display = 'none';
-        msg.style.color = '#B6B1D5';
-        msg.style.background = '#332C4B';
-        msg.style.borderRadius = '12px';
-        msg.style.padding = '16px 24px';
-        msg.style.fontFamily = "'Inter', Arial, sans-serif";
-        msg.style.fontSize = '18px';
-        msg.style.textAlign = 'center';
-        msg.style.margin = '16px auto 0 auto';
-        msg.style.maxWidth = '600px';
-        msg.innerText = 'No valid loans found for this wallet.';
-        document.querySelector('.app').insertAdjacentElement('beforebegin', msg);
-    }
 
     // --- Clear chart and state ---
     function clearChart() {
@@ -253,7 +246,7 @@
         singleBubbles.length = 0;
         ctx.clearRect(0, 0, WIDTH, HEIGHT);
         drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
-        document.getElementById('no-data-message').style.display = 'block';
+        noDataMessage.style.display = 'block';
     }
 
     // --- Detect Overlaps and Form Clusters ---
@@ -308,74 +301,13 @@
         }
     });
 
-    // --- D3-based Circle Packing for Cluster Expansion ---
-    // Helper to pack a cluster's bubbles using d3.packSiblings
-    function packClusterBubbles(cluster) {
-        // d3.packSiblings expects an array of objects with x, y, r
-        // We'll use the current radii, and pack around (0,0)
-        const packed = cluster.bubbles.map(b => ({...b, x: 0, y: 0, r: b.r}));
-        d3.packSiblings(packed);
-        // Compute centroid of the cluster's current positions
-        let sumX = 0, sumY = 0;
-        for (const b of cluster.bubbles) {
-            sumX += b.x;
-            sumY += b.y;
-        }
-        const centroidX = sumX / cluster.bubbles.length;
-        const centroidY = sumY / cluster.bubbles.length;
-        // Compute bounding box of packed cluster
-        const minX = Math.min(...packed.map(b => b.x - b.r));
-        const maxX = Math.max(...packed.map(b => b.x + b.r));
-        const minY = Math.min(...packed.map(b => b.y - b.r));
-        const maxY = Math.max(...packed.map(b => b.y + b.r));
-        const packedCenterX = (minX + maxX) / 2;
-        const packedCenterY = (minY + maxY) / 2;
-        // Offset packed positions to center at the cluster's centroid
-        for (let i = 0; i < cluster.bubbles.length; i++) {
-            cluster.bubbles[i].packedX = centroidX + (packed[i].x - packedCenterX);
-            cluster.bubbles[i].packedY = centroidY + (packed[i].y - packedCenterY);
-        }
-        // --- Post-packing boundary correction (no scaling) ---
-        // Calculate min/max after centering
-        let shiftX = 0, shiftY = 0;
-        const leftBound = CHART_PADDING_X;
-        const rightBound = WIDTH - CHART_PADDING_X;
-        const topBound = CHART_PADDING_TOP;
-        const bottomBound = CHART_HEIGHT;
-        // Find how much we need to shift to keep all bubbles inside bounds
-        let minBubbleX = Infinity, maxBubbleX = -Infinity, minBubbleY = Infinity, maxBubbleY = -Infinity;
-        for (const b of cluster.bubbles) {
-            minBubbleX = Math.min(minBubbleX, b.packedX - b.r);
-            maxBubbleX = Math.max(maxBubbleX, b.packedX + b.r);
-            minBubbleY = Math.min(minBubbleY, b.packedY - b.r);
-            maxBubbleY = Math.max(maxBubbleY, b.packedY + b.r);
-        }
-        if (minBubbleX < leftBound) shiftX = leftBound - minBubbleX;
-        if (maxBubbleX > rightBound) shiftX = rightBound - maxBubbleX;
-        if (minBubbleY < topBound) shiftY = topBound - minBubbleY;
-        if (maxBubbleY > bottomBound) shiftY = bottomBound - maxBubbleY;
-        // Apply the shift to all packed bubbles
-        for (const b of cluster.bubbles) {
-            b.packedX += shiftX;
-            b.packedY += shiftY;
-        }
-    }
-
-    // Animate bubbles to packed positions
-    function animateClusterToPacked(cluster, t) {
-        for (const b of cluster.bubbles) {
-            b.x += (b.packedX - b.x) * t;
-            b.y += (b.packedY - b.y) * t;
-        }
-    }
-
     // --- Animation loop ---
     function animate() {
         for (const cluster of clusters) {
             if (cluster.state === "expanding") {
                 // On first frame, compute packed positions
                 if (!cluster.packedInitialized) {
-                    packClusterBubbles(cluster);
+                    packClusterBubbles(cluster, CHART_PADDING_X, WIDTH, CHART_PADDING_TOP, CHART_HEIGHT);
                     cluster.packedInitialized = true;
                 }
                 // Animate bubbles to packed positions
@@ -400,32 +332,6 @@
     // Start animation
     animate();
 
-    // --- Responsive Resize Handler ---
-    function resizeChart() {
-        const container = document.querySelector('.chart-wrapper');
-        const containerWidth = container.clientWidth;
-        const containerHeight = container.clientHeight;
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = Math.round(containerWidth * dpr);
-        canvas.height = Math.round(containerHeight * dpr);
-        canvas.style.width = containerWidth + 'px';
-        canvas.style.height = containerHeight + 'px';
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
-        ctx.scale(dpr, dpr);
-        WIDTH = containerWidth;
-        HEIGHT = containerHeight;
-        CHART_HEIGHT = Math.round(HEIGHT * 0.88);
-        CHART_PADDING_X = 24;
-        CHART_PADDING_TOP = Math.round(HEIGHT * 0.03);
-        CHART_PADDING_BOTTOM = Math.round(HEIGHT * 0.09);
-        draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
-    }
-
-    // Remove the aspect ratio function and use container dimensions
-    window.addEventListener('resize', resizeChart);
-    // Initial set
-    resizeChart();
-
     // Add overlap stats to the animation loop for debugging
     function logOverlapStats() {
         let totalOverlap = 0;
@@ -445,14 +351,6 @@
         }
         console.log(`Total overlap: ${totalOverlap.toFixed(2)}, Max overlap: ${maxOverlap.toFixed(2)}, Overlapping pairs: ${overlapCount}`);
     }
-
-    // Add toggle button handler at the end of the script
-    imageToggle.addEventListener('click', () => {
-        showImages = !showImages;
-        imageToggle.textContent = showImages ? 'Hide Images' : 'Show Images';
-        imageToggle.classList.toggle('active', showImages);
-        draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE); // Redraw the chart with new setting
-    });
 
     // Add wallet change event handler
     walletSelect.addEventListener('change', async (e) => {
@@ -499,7 +397,7 @@
                         }
                     );
                     
-                    document.getElementById('no-data-message').style.display = 'none';
+                    noDataMessage.style.display = 'none';
                 } else {
                     clearChart();
                     console.warn('API response: no loans', data);
