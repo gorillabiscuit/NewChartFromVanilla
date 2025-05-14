@@ -96,8 +96,10 @@ function updateCluster(cluster) {
 
 /**
  * @param {Object} cluster
+ * @param {number} WIDTH
+ * @param {number} HEIGHT
  */
-function applyOutwardForce(cluster) {
+function applyOutwardForce(cluster, WIDTH, HEIGHT) {
     const centerX = WIDTH / 2;
     const centerY = HEIGHT / 2;
     const clusterSize = cluster.size;
