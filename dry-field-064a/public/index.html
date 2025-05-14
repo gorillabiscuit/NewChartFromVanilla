@@ -109,6 +109,7 @@
     import { MAX_FRAMES, REVERT_DELAY } from './constants.js';
     import { drawAxes, draw, timeScale, niceDateTicks, niceLinearTicks, TICK_LENGTH, TICK_PADDING, DATE_TICK_COUNT } from './renderUtils.js';
     import { updateTooltip, initializeTooltip, setupTooltipStyles } from './uiComponents.js';
+    import { fetchLoanData, loadBubbleImages } from './dataService.js';
     // --- DOM and Canvas Setup ---
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -212,53 +213,20 @@
                 BUBBLE_PADDING_FACTOR
             );
             
-            // Set up image loading handlers for all bubbles
-            const totalBubbles = allBubbles.length;
-            let loadedImages = 0;
-            
-            allBubbles.forEach(bubble => {
-                if (bubble.img) {
-                    // For already loaded images
-                    if (bubble.img.complete && bubble.img.naturalWidth > 0) {
-                        loadedImages++;
-                    } else {
-                        // For images still loading
-                        const originalOnload = bubble.img.onload;
-                        bubble.img.onload = function() {
-                            if (originalOnload) originalOnload.call(this);
-                            loadedImages++;
-                            // Redraw the chart when all or most images are loaded
-                            if (loadedImages >= totalBubbles * 0.8 || loadedImages >= totalBubbles) {
-                                console.log(`${loadedImages}/${totalBubbles} images loaded, redrawing chart`);
-                                // Force a redraw if showImages is on
-                                if (showImages) {
-                                    draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
-                                }
-                            }
-                        };
+            // Load bubble images with progress tracking
+            loadBubbleImages(allBubbles, 
+                (loaded, total) => {
+                    console.log(`${loaded}/${total} images loaded (${Math.round(loaded/total*100)}%)`);
+                },
+                (totalLoaded) => {
+                    console.log(`All ${totalLoaded} images loaded, redrawing chart`);
+                    if (showImages) {
+                        draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
                     }
                 }
-            });
+            );
         }
     });
-
-    // API call function
-    async function fetchLoanData(walletAddress) {
-        try {
-            let url;
-            if (walletAddress === '__ALL__') {
-                url = `https://theta-sdk-api.nftfi.com/data/v0/pipes/loans_due_endpoint.json?daysFromNow=30&page_size=1000000&page=0`;
-            } else {
-                url = `https://theta-sdk-api.nftfi.com/data/v0/pipes/loans_due_endpoint.json?daysFromNow=30&page_size=1000000&borrowerAddress=${walletAddress}&page=0`;
-            }
-            const response = await fetch(url);
-            const data = await response.json();
-            return data;
-        } catch (error) {
-            console.error('Error fetching loan data:', error);
-            return null;
-        }
-    }
 
     // --- Add a user-friendly message element above the chart ---
     if (!document.getElementById('no-data-message')) {
@@ -516,6 +484,19 @@
                         CHART_PADDING_TOP,
                         CHART_HEIGHT,
                         BUBBLE_PADDING_FACTOR
+                    );
+                    
+                    // Load images for the new bubbles
+                    loadBubbleImages(allBubbles, 
+                        (loaded, total) => {
+                            console.log(`${loaded}/${total} images loaded (${Math.round(loaded/total*100)}%)`);
+                        },
+                        (totalLoaded) => {
+                            console.log(`All ${totalLoaded} images loaded, redrawing chart`);
+                            if (showImages) {
+                                draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
+                            }
+                        }
                     );
                     
                     document.getElementById('no-data-message').style.display = 'none';
