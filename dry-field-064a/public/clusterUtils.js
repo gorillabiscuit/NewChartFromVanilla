@@ -35,10 +35,22 @@ function createLoanBubbleFromAPI(loan, minAPR, maxAPR, minDue, maxDue, minUSD, m
     }
     // Defensive: handle empty or missing optional fields
     const name = loan.nftName && loan.nftName.trim() ? loan.nftName : (loan.nftProjectName && loan.nftProjectName.trim() ? loan.nftProjectName : 'NFT Loan');
-    const imageUrl = (loan.nftImageSmallUri && loan.nftImageSmallUri.trim()) ? loan.nftImageSmallUri :
-        (loan.nftImageLargeUri && loan.nftImageLargeUri.trim()) ? loan.nftImageLargeUri :
-        (loan.nftProjectImageUri && loan.nftProjectImageUri.trim()) ? loan.nftProjectImageUri :
-        'https://via.placeholder.com/56x56.png?text=NFT';
+    
+    // Fix any URL encoding issues in the image URIs
+    let imageUrl = '';
+    if (loan.nftImageSmallUri && loan.nftImageSmallUri.trim()) {
+        imageUrl = loan.nftImageSmallUri.trim();
+    } else if (loan.nftImageLargeUri && loan.nftImageLargeUri.trim()) {
+        imageUrl = loan.nftImageLargeUri.trim();
+    } else if (loan.nftProjectImageUri && loan.nftProjectImageUri.trim()) {
+        imageUrl = loan.nftProjectImageUri.trim();
+    } else {
+        imageUrl = 'https://via.placeholder.com/56x56.png?text=NFT';
+    }
+    
+    // Cleanup URL if needed (remove line breaks, extra spaces)
+    imageUrl = imageUrl.replace(/[\r\n\t]/g, '').trim();
+    
     if (!loan.nftName || !loan.nftName.trim()) {
         console.warn('Loan missing nftName, using fallback:', loan);
     }
@@ -64,7 +76,7 @@ function createLoanBubbleFromAPI(loan, minAPR, maxAPR, minDue, maxDue, minUSD, m
     const maxY = CHART_HEIGHT - (r * BUBBLE_PADDING_FACTOR);
     x = Math.max(minX, Math.min(maxX, x));
     y = Math.max(minY, Math.min(maxY, y));
-    return {
+    const bubble = {
         x, y, r,
         initialX: x, initialY: y,
         vx: (Math.random() - 0.5) * 0.1,
@@ -78,8 +90,37 @@ function createLoanBubbleFromAPI(loan, minAPR, maxAPR, minDue, maxDue, minUSD, m
         showTooltip: true,
         visited: false,
         protocol: loan.protocolName || '',
-        loanId: loan.loanId || ''
+        loanId: loan.loanId || '',
+        img: null
     };
+
+    // Create image object using the determined imageUrl
+    try {
+        const img = new Image();
+        img.crossOrigin = "Anonymous"; // Try to avoid CORS issues
+        
+        // Add load and error handlers
+        img.onload = () => {
+            console.log(`Image loaded for ${name}: ${imageUrl}`);
+        };
+        img.onerror = (e) => {
+            console.error(`Failed to load image for ${name}: ${imageUrl}`, e);
+            // Try a fallback method if the main one fails
+            if (imageUrl.includes('reservoir.tools')) {
+                console.log('Attempting direct NFT image loading for', name);
+                const fallbackUrl = `https://nfts.reservoir.tools/token/ethereum/${loan.nftAddress}:${loan.nftId}/image/v1`;
+                img.src = fallbackUrl;
+            }
+        };
+        
+        // Set the source AFTER setting up event handlers
+        img.src = imageUrl;
+        bubble.img = img;
+    } catch (e) {
+        console.error('Error creating image for bubble:', e);
+    }
+    
+    return bubble;
 }
 
 /**

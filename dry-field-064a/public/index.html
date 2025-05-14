@@ -149,12 +149,28 @@
             top: 50%;
             transform: translateY(-50%) rotate(-90deg);
         }
+        .toggle-button {
+            margin: 10px auto;
+            padding: 8px 16px;
+            background: #332C4B;
+            color: #B6B1D5;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .toggle-button.active {
+            background: #463D69;
+            color: #ffffff;
+        }
     </style>
 </head>
 <body>
     <select id="walletSelect" class="wallet-selector">
         <option value="">Select a wallet...</option>
     </select>
+    <button id="imageToggle" class="toggle-button">Show Images</button>
     <div class="app">
         <div class="chart-wrapper">
             <canvas id="canvas"></canvas>
@@ -166,10 +182,12 @@
     import { getBubbleOverlap } from './bubbleUtils.js';
     import { applyOutwardForce, revertClusterSmoothly } from './physics.js';
     import { MAX_FRAMES, REVERT_DELAY } from './constants.js';
+    import { drawAxes, draw, updateTooltip, timeScale, niceDateTicks, niceLinearTicks, TICK_LENGTH, TICK_PADDING, DATE_TICK_COUNT } from './renderUtils.js';
     // --- DOM and Canvas Setup ---
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const tooltip = document.getElementById('tooltip');
+    const imageToggle = document.getElementById('imageToggle');
 
     // --- Layout Constants ---
     let WIDTH = canvas.width;
@@ -183,9 +201,6 @@
     const DATE_FORMAT = { month: 'short', day: 'numeric' };
     const GRID_LINE_COLOR = '#ddd';
     const AXIS_LINE_COLOR = '#666';
-    const TICK_LENGTH = 5;
-    const TICK_PADDING = 5;
-    const DATE_TICK_COUNT = 12; // Number of date ticks to show
 
     // --- Data Padding and Bubble Sizing ---
     const MIN_PADDING_PERCENT = 0.05;  // Minimum 5% padding
@@ -202,6 +217,7 @@
     let mouseY = 0;
     let PADDED_MIN_DATE = null;
     let PADDED_MAX_DATE = null;
+    let showImages = false; // Flag to control whether to show NFT images in bubbles
 
     // Wallet addresses
     const WALLETS = [
@@ -237,7 +253,7 @@
     });
     // Set default wallet (first in the new list)
     walletSelect.value = WALLETS[0];
-    // Trigger initial load
+    // Trigger initial load with image handling
     fetchLoanData(WALLETS[0]).then(data => {
         if (data && data.data && data.data.length > 0) {
             useLoanDataForBubbles(
@@ -257,6 +273,34 @@
                 CHART_HEIGHT,
                 BUBBLE_PADDING_FACTOR
             );
+            
+            // Set up image loading handlers for all bubbles
+            const totalBubbles = allBubbles.length;
+            let loadedImages = 0;
+            
+            allBubbles.forEach(bubble => {
+                if (bubble.img) {
+                    // For already loaded images
+                    if (bubble.img.complete && bubble.img.naturalWidth > 0) {
+                        loadedImages++;
+                    } else {
+                        // For images still loading
+                        const originalOnload = bubble.img.onload;
+                        bubble.img.onload = function() {
+                            if (originalOnload) originalOnload.call(this);
+                            loadedImages++;
+                            // Redraw the chart when all or most images are loaded
+                            if (loadedImages >= totalBubbles * 0.8 || loadedImages >= totalBubbles) {
+                                console.log(`${loadedImages}/${totalBubbles} images loaded, redrawing chart`);
+                                // Force a redraw if showImages is on
+                                if (showImages) {
+                                    draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
+                                }
+                            }
+                        };
+                    }
+                }
+            });
         }
     });
 
@@ -296,7 +340,7 @@
         clusters.length = 0;
         singleBubbles.length = 0;
         ctx.clearRect(0, 0, WIDTH, HEIGHT);
-        drawAxes();
+        drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
         document.getElementById('no-data-message').style.display = 'block';
     }
 
@@ -306,227 +350,6 @@
         const dy = b1.y - b2.y;
         const dist = Math.hypot(dx, dy);
         return dist < (b1.r + b2.r) * 0.98;
-    }
-
-    // --- D3-inspired time scale and tick generator ---
-    function timeScale(domain, range) {
-        const [d0, d1] = domain;
-        const [r0, r1] = range;
-        return d => r0 + ((d - d0) / (d1 - d0)) * (r1 - r0);
-    }
-
-    // Returns an array of Date objects for nice ticks, adapting to the span
-    function niceDateTicks(start, stop, maxCount) {
-        const msSecond = 1000;
-        const msMinute = 60 * msSecond;
-        const msHour = 60 * msMinute;
-        const msDay = 24 * msHour;
-        const msWeek = 7 * msDay;
-        const msMonth = msDay * 30;
-        const msYear = msDay * 365;
-        const span = stop - start;
-        let step, unit, format;
-        if (span < msHour * 12) {
-            step = Math.ceil(span / msHour / maxCount);
-            unit = 'hour';
-            format = d => d.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'});
-        } else if (span < msDay * 2) {
-            step = Math.ceil(span / msHour / maxCount);
-            unit = 'hour';
-            format = d => d.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'});
-        } else if (span < msWeek * 2) {
-            step = Math.ceil(span / msDay / maxCount);
-            unit = 'day';
-            format = d => d.toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
-        } else if (span < msMonth * 2) {
-            step = Math.ceil(span / msDay / maxCount * 2);
-            unit = 'day';
-            format = d => d.toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
-        } else if (span < msYear) {
-            step = Math.ceil(span / msMonth / maxCount);
-            unit = 'month';
-            format = d => d.toLocaleDateString('en-US', {month: 'short', year: '2-digit'});
-        } else {
-            step = Math.ceil(span / msYear / maxCount);
-            unit = 'year';
-            format = d => d.getFullYear();
-        }
-        const ticks = [];
-        let d = new Date(start);
-        d.setSeconds(0,0);
-        d.setMinutes(0);
-        d.setHours(0);
-        if (unit === 'month') d.setDate(1);
-        if (unit === 'year') { d.setMonth(0); d.setDate(1); }
-        while (d.getTime() < stop) {
-            ticks.push(new Date(d));
-            if (unit === 'year') d.setFullYear(d.getFullYear() + step);
-            else if (unit === 'month') d.setMonth(d.getMonth() + step);
-            else if (unit === 'week') d.setDate(d.getDate() + 7 * step);
-            else if (unit === 'day') d.setDate(d.getDate() + step);
-            else if (unit === 'hour') d.setHours(d.getHours() + step);
-        }
-        if (ticks.length < 2 || ticks[ticks.length-1].getTime() < stop) {
-            ticks.push(new Date(stop));
-        }
-        return {ticks, format};
-    }
-
-    // --- D3-inspired linear tick generator for APR ---
-    function niceLinearTicks(min, max, maxCount) {
-        // D3-like nice ticks for linear scale
-        const span = max - min;
-        if (span === 0) return [min];
-        const step = Math.pow(10, Math.floor(Math.log10(span / maxCount)));
-        const err = maxCount / (span / step);
-        let niceStep = step;
-        if (err <= 0.15) niceStep *= 10;
-        else if (err <= 0.35) niceStep *= 5;
-        else if (err <= 0.75) niceStep *= 2;
-        const niceMin = Math.floor(min / niceStep) * niceStep;
-        const niceMax = Math.ceil(max / niceStep) * niceStep;
-        const ticks = [];
-        for (let v = niceMin; v <= niceMax + 0.5 * niceStep; v += niceStep) {
-            ticks.push(Number(v.toFixed(6)));
-        }
-        return ticks;
-    }
-
-    // --- Draw Axes ---
-    function drawAxes() {
-        ctx.save();
-        ctx.lineWidth = 1;
-        
-        // Draw Y axis APR ticks, grid lines, and labels (D3-inspired)
-        if (allBubbles.length > 0) {
-            const loans = allBubbles;
-            const minAPR = Math.min(...loans.map(l => l.apr));
-            const maxAPR = Math.max(...loans.map(l => l.apr));
-            let aprTicks = niceLinearTicks(minAPR, maxAPR, 8);
-            if (aprTicks.length > 1) aprTicks = aprTicks.slice(1);
-            aprTicks.forEach(tick => {
-                const y = CHART_PADDING_TOP + (CHART_HEIGHT - CHART_PADDING_TOP) * (1 - (tick - minAPR) / ((maxAPR - minAPR) || 1));
-                // Draw grid line
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; // semi-transparent white
-                ctx.beginPath();
-                ctx.moveTo(CHART_PADDING_X, y);
-                ctx.lineTo(WIDTH, y);
-                ctx.stroke();
-                // Draw tick in left margin
-                ctx.strokeStyle = '#B6B1D5'; // lighter color for axis
-                ctx.beginPath();
-                ctx.moveTo(CHART_PADDING_X - TICK_LENGTH, y);
-                ctx.lineTo(CHART_PADDING_X, y);
-                ctx.stroke();
-                // Draw label in left margin
-                ctx.fillStyle = '#B6B1D5'; // lighter color for labels
-                ctx.textAlign = 'right';
-                ctx.textBaseline = 'middle';
-                ctx.font = '13px Inter, Arial, sans-serif';
-                ctx.fillText(tick % 1 === 0 ? `${tick}` : tick.toFixed(2), CHART_PADDING_X - TICK_LENGTH - TICK_PADDING, y);
-            });
-        }
-        
-        // Draw X axis date ticks and grid lines (D3-inspired)
-        if (allBubbles.length > 0 && PADDED_MIN_DATE !== null && PADDED_MAX_DATE !== null) {
-            const paddedMinDate = PADDED_MIN_DATE;
-            const paddedMaxDate = PADDED_MAX_DATE;
-            const scale = timeScale([paddedMinDate, paddedMaxDate], [CHART_PADDING_X, WIDTH - CHART_PADDING_X]);
-            const {ticks: dateTicks, format: dateFormat} = niceDateTicks(paddedMinDate, paddedMaxDate, DATE_TICK_COUNT);
-            dateTicks.forEach(date => {
-                const x = scale(date.getTime());
-                // Draw grid line
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; // semi-transparent white
-                ctx.beginPath();
-                ctx.moveTo(x, CHART_PADDING_TOP);
-                ctx.lineTo(x, CHART_HEIGHT);
-                ctx.stroke();
-                // Draw tick
-                ctx.strokeStyle = '#B6B1D5'; // lighter color for axis
-                ctx.beginPath();
-                ctx.moveTo(x, CHART_HEIGHT);
-                ctx.lineTo(x, CHART_HEIGHT + TICK_LENGTH);
-                ctx.stroke();
-                // Draw date label in the dark area, above the bottom padding
-                ctx.fillStyle = '#B6B1D5'; // lighter color for labels
-                ctx.textAlign = 'center';
-                const dateStr = dateFormat(date);
-                ctx.fillText(dateStr, x, CHART_HEIGHT + TICK_LENGTH + TICK_PADDING + 10);
-            });
-        }
-        
-        ctx.restore();
-    }
-
-    // --- Draw Function ---
-    function draw() {
-        // Visually separate plot and label areas
-        ctx.clearRect(0, 0, WIDTH, HEIGHT);
-        // Draw top margin (dark for top padding)
-        ctx.fillStyle = '#221E37';
-        ctx.fillRect(0, 0, WIDTH, CHART_PADDING_TOP);
-        // Draw left margin (dark for y-axis labels)
-        ctx.fillStyle = '#221E37';
-        ctx.fillRect(0, CHART_PADDING_TOP, CHART_PADDING_X, CHART_HEIGHT - CHART_PADDING_TOP);
-        // Draw label area (dark)
-        ctx.fillStyle = '#221E37';
-        ctx.fillRect(0, CHART_HEIGHT, WIDTH, HEIGHT - CHART_HEIGHT);
-        // Draw plot area (dark), starting exactly at the y-axis line
-        ctx.fillStyle = '#221E37';
-        ctx.fillRect(CHART_PADDING_X - TICK_LENGTH, CHART_PADDING_TOP, WIDTH - (CHART_PADDING_X - TICK_LENGTH), CHART_HEIGHT - CHART_PADDING_TOP);
-        // Draw axes and bubbles
-        drawAxes();
-        // 1. Draw single bubbles and non-expanded clusters
-        for (const b of singleBubbles) {
-            ctx.beginPath();
-            ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-            ctx.fillStyle = PROTOCOL_COLORS[b.protocol] || DEFAULT_PROTOCOL_COLOR;
-            ctx.globalAlpha = 0.65;
-            ctx.fill();
-            ctx.globalAlpha = 1.0;
-            ctx.strokeStyle = 'rgba(0,0,0,0)'; // no outline
-            ctx.lineWidth = 1;
-            ctx.stroke();
-        }
-        for (const cluster of clusters) {
-            if (cluster.state !== "expanded" && cluster.state !== "expanding") {
-                for (const b of cluster.bubbles) {
-                    ctx.beginPath();
-                    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-                    ctx.fillStyle = PROTOCOL_COLORS[b.protocol] || DEFAULT_PROTOCOL_COLOR;
-                    ctx.globalAlpha = 0.65;
-                    ctx.fill();
-                    ctx.globalAlpha = 1.0;
-                    ctx.setLineDash([6, 6]);
-                    ctx.beginPath();
-                    ctx.arc(b.x, b.y, b.r + 2, 0, Math.PI * 2); // 2px offset for stroke
-                    ctx.strokeStyle = 'rgba(255,255,255,0.75)'; // dashed white outline
-                    ctx.lineWidth = 1;
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                }
-            }
-        }
-        // 2. Draw expanded (and expanding) clusters on top
-        for (const cluster of clusters) {
-            if (cluster.state === "expanded" || cluster.state === "expanding") {
-                for (const b of cluster.bubbles) {
-                    ctx.beginPath();
-                    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-                    ctx.fillStyle = PROTOCOL_COLORS[b.protocol] || DEFAULT_PROTOCOL_COLOR;
-                    ctx.globalAlpha = 0.65;
-                    ctx.fill();
-                    ctx.globalAlpha = 1.0;
-                    ctx.setLineDash([6, 6]);
-                    ctx.beginPath();
-                    ctx.arc(b.x, b.y, b.r + 2, 0, Math.PI * 2); // 2px offset for stroke
-                    ctx.strokeStyle = 'rgba(255,255,255,0.75)'; // dashed white outline
-                    ctx.lineWidth = 1;
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-                }
-            }
-        }
     }
 
     // --- Mouse Handling ---
@@ -570,135 +393,6 @@
                     }
                 }
             }
-        }
-    });
-
-    // --- Tooltip update ---
-    function updateTooltip() {
-        let closest = null;
-        let closestDist = Infinity;
-
-        for (const b of singleBubbles) {
-            const dx = mouseX - b.x;
-            const dy = mouseY - b.y;
-            const dist = Math.hypot(dx, dy);
-            if (dist < b.r && dist < closestDist && b.showTooltip) {
-                closest = b;
-                closestDist = dist;
-            }
-        }
-        for (const cluster of clusters) {
-            for (const b of cluster.bubbles) {
-                const dx = mouseX - b.x;
-                const dy = mouseY - b.y;
-                const dist = Math.hypot(dx, dy);
-                if (dist < b.r && dist < closestDist && b.showTooltip) {
-                    closest = b;
-                    closestDist = dist;
-                }
-            }
-        }
-        if (closest) {
-            // Format expiry (date and time)
-            let expiry = '';
-            let expiryTime = '';
-            if (closest.dueTime) {
-                const d = new Date(closest.dueTime);
-                expiry = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-                expiryTime = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            }
-            // Format repayment
-            const repayment = closest.repayment ? closest.repayment.toLocaleString() : '';
-            // --- Calculate Total Due (robust cumulative USD from soonest to hovered loan by due date) ---
-            // Only sum over bubbles for the current wallet (allBubbles)
-            const valid = allBubbles.filter(b =>
-                b.dueTime && !isNaN(new Date(b.dueTime).getTime()) &&
-                Number.isFinite(b.repayment) &&
-                b.loanId // or another unique identifier
-            );
-            // Sort by due date ascending, then by loanId (string compare for stability)
-            valid.sort((a, b) => {
-                const dateDiff = new Date(a.dueTime) - new Date(b.dueTime);
-                if (dateDiff !== 0) return dateDiff;
-                return String(a.loanId).localeCompare(String(b.loanId));
-            });
-            // Find hovered loan's index (by loanId)
-            const hoveredIndex = valid.findIndex(b => b.loanId === closest.loanId);
-            let totalDue = 0;
-            if (hoveredIndex !== -1) {
-                for (let i = 0; i <= hoveredIndex; i++) {
-                    totalDue += valid[i].repayment;
-                }
-            } else {
-                totalDue = Number.isFinite(closest.repayment) ? closest.repayment : 0; // fallback
-            }
-            // Build HTML
-            tooltip.innerHTML = `
-                <div class="tooltip-header">
-                    <img class="tooltip-img" src="${closest.imageUrl}" alt="NFT" />
-                    <div class="tooltip-title">${closest.name || 'NFT Loan'}</div>
-                </div>
-                <div class="tooltip-row">
-                    <span class="tooltip-label">Protocol</span>
-                    <span class="tooltip-value">${closest.protocol || 'Unknown'}</span>
-                </div>
-                <div class="tooltip-row">
-                    <span class="tooltip-label">APR</span>
-                    <span class="tooltip-value">${closest.apr ? closest.apr.toFixed(2) : '--'}%</span>
-                </div>
-                <div class="tooltip-row">
-                    <span class="tooltip-label">Repayment</span>
-                    <span class="tooltip-value">${repayment} <span class="tooltip-value usdc">USDC</span></span>
-                </div>
-                <div class="tooltip-row">
-                    <span class="tooltip-label">Repayment Date</span>
-                    <span class="tooltip-value">${expiry} ${expiryTime}</span>
-                </div>
-                <div class="tooltip-row">
-                    <span class="tooltip-label">Total Due</span>
-                    <span class="tooltip-value">${totalDue.toLocaleString()} <span class="tooltip-value usdc">USDC</span></span>
-                </div>
-            `;
-            tooltip.style.left = (closest.x + canvas.offsetLeft + 20) + "px";
-            tooltip.style.top = (closest.y + canvas.offsetTop - 40) + "px";
-            tooltip.style.visibility = "visible";
-        } else {
-            tooltip.style.visibility = "hidden";
-        }
-    }
-
-    // --- Add try/catch to wallet change event ---
-    walletSelect.addEventListener('change', async (e) => {
-        try {
-            const selectedWallet = e.target.value;
-            if (selectedWallet) {
-                const data = await fetchLoanData(selectedWallet);
-                if (data && data.data && data.data.length > 0) {
-                    useLoanDataForBubbles(
-                        data.data,
-                        allBubbles,
-                        clusters,
-                        singleBubbles,
-                        clearChart,
-                        (bubbles) => findClusters(bubbles, clusters, singleBubbles, bubblesOverlap, VELOCITY_POWER, BASE_VELOCITY),
-                        (loan, ...bubbleArgs) => createLoanBubbleFromAPI(loan, ...bubbleArgs),
-                        (min, max) => { PADDED_MIN_DATE = min; PADDED_MAX_DATE = max; },
-                        MIN_PADDING_PERCENT,
-                        MAX_PADDING_PERCENT,
-                        CHART_PADDING_X,
-                        WIDTH,
-                        CHART_PADDING_TOP,
-                        CHART_HEIGHT,
-                        BUBBLE_PADDING_FACTOR
-                    );
-                } else {
-                    clearChart();
-                    console.warn('API response: no loans', data);
-                }
-            }
-        } catch (err) {
-            clearChart();
-            console.error('Error loading wallet data:', err);
         }
     });
 
@@ -786,8 +480,8 @@
                 cluster.packedInitialized = false;
             }
         }
-        draw();
-        updateTooltip();
+        draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
+        updateTooltip(tooltip, mouseX, mouseY, singleBubbles, clusters, canvas, allBubbles);
         requestAnimationFrame(animate);
     }
 
@@ -812,7 +506,7 @@
         CHART_PADDING_X = 24;
         CHART_PADDING_TOP = Math.round(HEIGHT * 0.03);
         CHART_PADDING_BOTTOM = Math.round(HEIGHT * 0.09);
-        draw();
+        draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
     }
 
     // Remove the aspect ratio function and use container dimensions
@@ -839,6 +533,57 @@
         }
         console.log(`Total overlap: ${totalOverlap.toFixed(2)}, Max overlap: ${maxOverlap.toFixed(2)}, Overlapping pairs: ${overlapCount}`);
     }
+
+    // Add toggle button handler at the end of the script
+    imageToggle.addEventListener('click', () => {
+        showImages = !showImages;
+        imageToggle.textContent = showImages ? 'Hide Images' : 'Show Images';
+        imageToggle.classList.toggle('active', showImages);
+        draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE); // Redraw the chart with new setting
+    });
+
+    // Add wallet change event handler
+    walletSelect.addEventListener('change', async (e) => {
+        try {
+            const selectedWallet = e.target.value;
+            if (selectedWallet) {
+                const data = await fetchLoanData(selectedWallet);
+                if (data && data.data && data.data.length > 0) {
+                    // Clear existing data
+                    allBubbles.length = 0;
+                    clusters.length = 0;
+                    singleBubbles.length = 0;
+                    
+                    // Update with new data
+                    useLoanDataForBubbles(
+                        data.data,
+                        allBubbles,
+                        clusters,
+                        singleBubbles,
+                        clearChart,
+                        (bubbles) => findClusters(bubbles, clusters, singleBubbles, bubblesOverlap, VELOCITY_POWER, BASE_VELOCITY),
+                        (loan, ...bubbleArgs) => createLoanBubbleFromAPI(loan, ...bubbleArgs),
+                        (min, max) => { PADDED_MIN_DATE = min; PADDED_MAX_DATE = max; },
+                        MIN_PADDING_PERCENT,
+                        MAX_PADDING_PERCENT,
+                        CHART_PADDING_X,
+                        WIDTH,
+                        CHART_PADDING_TOP,
+                        CHART_HEIGHT,
+                        BUBBLE_PADDING_FACTOR
+                    );
+                    
+                    document.getElementById('no-data-message').style.display = 'none';
+                } else {
+                    clearChart();
+                    console.warn('API response: no loans', data);
+                }
+            }
+        } catch (err) {
+            clearChart();
+            console.error('Error loading wallet data:', err);
+        }
+    });
     </script>
 </body>
 </html> 
