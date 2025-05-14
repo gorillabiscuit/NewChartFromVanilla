@@ -374,11 +374,11 @@ function updateTooltip(tooltip, mouseX, mouseY, singleBubbles, clusters, canvas,
             </div>
             <div class="tooltip-row">
                 <span class="tooltip-label">APR</span>
-                <span class="tooltip-value">${closest.apr ? closest.apr.toFixed(2) : '--'}%</span>
+                <span class="tooltip-value">${closest.apr ? closest.apr.toFixed(2) : '--'}%${closest.isAprOutlier ? ' (outlier)' : ''}</span>
             </div>
             <div class="tooltip-row">
                 <span class="tooltip-label">Repayment</span>
-                <span class="tooltip-value">${repayment} <span class="tooltip-value usdc">USDC</span></span>
+                <span class="tooltip-value">${repayment} <span class="tooltip-value usdc">USDC</span>${closest.isUsdOutlier ? ' (outlier)' : ''}</span>
             </div>
             <div class="tooltip-row">
                 <span class="tooltip-label">Repayment Date</span>

@@ -7,6 +7,19 @@
 // (bubblesOverlap is already in bubbleUtils.js, so we will not duplicate it here)
 
 /**
+ * Gets the value at the specified percentile in the array.
+ * @param {Array} arr - Array of numbers
+ * @param {number} p - Percentile (0-100)
+ * @returns {number}
+ */
+function getPercentile(arr, p) {
+    if (arr.length === 0) return 0;
+    const sorted = [...arr].sort((a, b) => a - b);
+    const idx = Math.floor((p / 100) * (sorted.length - 1));
+    return sorted[idx];
+}
+
+/**
  * Create a loan bubble from API data.
  * @param {Object} loan
  * @param {number} minAPR
@@ -59,14 +72,31 @@ function createLoanBubbleFromAPI(loan, minAPR, maxAPR, minDue, maxDue, minUSD, m
     }
     // Calculate base position with padding
     let x = CHART_PADDING_X + (WIDTH - 2 * CHART_PADDING_X) * (new Date(loan.dueTime).getTime() - minDue) / ((maxDue - minDue) || 1);
-    let y = CHART_PADDING_TOP + (CHART_HEIGHT - CHART_PADDING_TOP) * (1 - (loan.apr - minAPR) / ((maxAPR - minAPR) || 1));
+    
+    // Y position: APR (top = highest, bottom = lowest), cap at maxAPR (98th percentile)
+    let cappedAPR = Math.min(loan.apr, maxAPR);
+    let y = CHART_PADDING_TOP + (CHART_HEIGHT - CHART_PADDING_TOP) * (1 - (cappedAPR - minAPR) / ((maxAPR - minAPR) || 1));
+    
     x += (Math.random() - 0.5) * 10;
     y += (Math.random() - 0.5) * 10;
-    const minR = 10;
-    const maxR = 40;
+    
+    // Set min and max radius based on whether we're viewing all loans or a single wallet
+    let minR, maxR;
+    const isAllLoansMode = (window.lastWalletSelected === '__ALL__');
+    if (isAllLoansMode) {
+        minR = 4;  // Smaller bubbles for all loans view
+        maxR = 16;
+    } else {
+        minR = 10; // Larger bubbles for single wallet view
+        maxR = 40;
+    }
+    
+    // --- Bubble size: clip to minUSD/maxUSD if values are outside the clipped range ---
+    let clippedUSD = Math.max(minUSD, Math.min(maxUSD, loan.principalAmountUSD));
+    
     const minArea = Math.PI * minR * minR;
     const maxArea = Math.PI * maxR * maxR;
-    const valueNorm = ((loan.principalAmountUSD - minUSD) / ((maxUSD - minUSD) || 1));
+    const valueNorm = ((clippedUSD - minUSD) / ((maxUSD - minUSD) || 1));
     const area = minArea + valueNorm * (maxArea - minArea);
     let r = Math.sqrt(area / Math.PI);
     r = Math.max(minR, Math.min(maxR, r));
@@ -91,6 +121,8 @@ function createLoanBubbleFromAPI(loan, minAPR, maxAPR, minDue, maxDue, minUSD, m
         visited: false,
         protocol: loan.protocolName || '',
         loanId: loan.loanId || '',
+        isAprOutlier: loan.apr > maxAPR,
+        isUsdOutlier: (loan.principalAmountUSD < minUSD || loan.principalAmountUSD > maxUSD),
         img: null
     };
 
@@ -156,11 +188,36 @@ function useLoanDataForBubbles(loans, allBubbles, clusters, singleBubbles, clear
 
         // Calculate min/max for mapping
         const minAPR = Math.min(...loans.map(l => l.apr));
-        const maxAPR = Math.max(...loans.map(l => l.apr));
+        
+        // Dynamic APR_CLIP at 98th percentile to handle outliers
+        const aprs = loans.map(l => l.apr).filter(a => Number.isFinite(a));
+        const APR_CLIP = getPercentile(aprs, 98);
+        const maxAPR = APR_CLIP; // Use the clipped value as max
+        
         const minDue = Math.min(...loans.map(l => new Date(l.dueTime).getTime()));
         const maxDue = Math.max(...loans.map(l => new Date(l.dueTime).getTime()));
-        const minUSD = Math.min(...loans.map(l => l.principalAmountUSD));
-        const maxUSD = Math.max(...loans.map(l => l.principalAmountUSD));
+        
+        // --- Dynamic bubble size range for 'All loans' ---
+        let minUSD, maxUSD, sizeClipNote = '';
+        const isAllLoansMode = (window.lastWalletSelected === '__ALL__');
+        
+        if (isAllLoansMode) {
+            // Clip USD values for "All loans" view at 2nd and 98th percentiles
+            const usds = loans.map(l => l.principalAmountUSD).filter(Number.isFinite);
+            minUSD = getPercentile(usds, 2);
+            maxUSD = getPercentile(usds, 98);
+            sizeClipNote = "Bubble sizes in 'All loans' view are clipped to the 2nd–98th percentile for readability.";
+        } else {
+            minUSD = Math.min(...loans.map(l => l.principalAmountUSD));
+            maxUSD = Math.max(...loans.map(l => l.principalAmountUSD));
+            sizeClipNote = '';
+        }
+
+        // Store APR_CLIP globally for tooltip/legend
+        window.APR_CLIP = APR_CLIP;
+        window.USD_CLIP_NOTE = sizeClipNote;
+        window.USD_CLIP_MIN = minUSD;
+        window.USD_CLIP_MAX = maxUSD;
 
         // Calculate dynamic padding based on data range
         const aprRange = maxAPR - minAPR;
@@ -255,4 +312,4 @@ function findClusters(bubbles, clusters, singleBubbles, bubblesOverlap, VELOCITY
     }
 }
 
-export { createLoanBubbleFromAPI, useLoanDataForBubbles, findClusters }; 
+export { createLoanBubbleFromAPI, useLoanDataForBubbles, findClusters, getPercentile }; 
