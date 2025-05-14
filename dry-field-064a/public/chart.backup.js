@@ -1,0 +1,1 @@
+expect(Math.abs(cluster.bubbles[0].x - 100)).toBeLessThan(0.1); 
