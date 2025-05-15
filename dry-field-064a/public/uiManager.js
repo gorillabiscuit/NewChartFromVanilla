@@ -2,6 +2,8 @@
  * UI Manager Module - Handles UI creation and management
  */
 
+import EventManager from './event/EventManager.js';
+
 /**
  * Creates a no data message element
  * 
@@ -64,11 +66,20 @@ function setupWalletDropdown(walletSelect, wallets) {
  * @param {Function} onToggle - Callback when toggle is clicked
  */
 function setupImageToggle(imageToggle, onToggle) {
-    imageToggle.addEventListener('click', () => {
+    console.log('Setting up image toggle');
+    const eventManager = new EventManager(imageToggle);
+    eventManager.on('click', () => {
         const newState = !imageToggle.classList.contains('active');
+        console.log('Image toggle clicked:', {
+            newState,
+            buttonText: newState ? 'Hide Images' : 'Show Images'
+        });
         imageToggle.textContent = newState ? 'Hide Images' : 'Show Images';
         imageToggle.classList.toggle('active', newState);
-        if (onToggle) onToggle(newState);
+        if (onToggle) {
+            console.log('Calling onToggle with state:', newState);
+            onToggle(newState);
+        }
     });
 }
 
@@ -80,6 +91,7 @@ function setupImageToggle(imageToggle, onToggle) {
  * @param {Function} onResize - Callback when resize happens with new dimensions
  */
 function setupResponsiveCanvas(canvas, ctx, onResize) {
+    const eventManager = new EventManager(window);
     const resizeCanvas = () => {
         const container = canvas.parentElement;
         const containerWidth = container.clientWidth;
@@ -113,8 +125,8 @@ function setupResponsiveCanvas(canvas, ctx, onResize) {
     // Initial sizing
     resizeCanvas();
     
-    // Handle window resizing
-    window.addEventListener('resize', resizeCanvas);
+    // Handle window resizing using EventManager
+    eventManager.on('resize', resizeCanvas);
     
     return resizeCanvas;
 }

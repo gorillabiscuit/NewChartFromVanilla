@@ -5,7 +5,7 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "dry-field-064a",
-	"main": "src/index.ts",
+	"main": "public/index.js",
 	"compatibility_date": "2025-05-07",
 	"observability": {
 		"enabled": true

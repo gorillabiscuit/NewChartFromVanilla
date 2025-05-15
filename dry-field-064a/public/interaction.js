@@ -1,6 +1,7 @@
 import { REVERT_DELAY } from './constants.js';
 import { applyOutwardForce } from './physics.js';
 import { updateMousePosition } from './state.js';
+import EventManager from './event/EventManager.js';
 
 /**
  * Setup mouse interaction handling for the canvas
@@ -8,7 +9,8 @@ import { updateMousePosition } from './state.js';
  * @param {Array} clusters - Array of bubble clusters
  */
 function setupMouseInteraction(canvas, clusters) {
-    canvas.addEventListener('mousemove', (e) => {
+    const eventManager = new EventManager(canvas);
+    eventManager.on('mousemove', (e) => {
         const rect = canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;

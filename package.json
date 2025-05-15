@@ -4,6 +4,8 @@
   "description": "",
   "main": "chart.js",
   "scripts": {
+    "build": "cp -R dry-field-064a/public/* dry-field-064a/public/",
+    "start": "live-server dry-field-064a/public",
     "test": "node --experimental-vm-modules node_modules/.bin/jest"
   },
   "repository": {

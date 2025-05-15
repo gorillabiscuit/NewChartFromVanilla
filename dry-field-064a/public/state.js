@@ -63,4 +63,17 @@ export function initializeState(canvas) {
     state.chartPaddingBottom = Math.round(state.height * 0.09);
 }
 
+// Chart state and utility functions
+
+function clearChart(ctx, WIDTH, HEIGHT, drawAxes, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, noDataMessage) {
+    state.allBubbles.length = 0;
+    state.clusters.length = 0;
+    state.singleBubbles.length = 0;
+    ctx.clearRect(0, 0, WIDTH, HEIGHT);
+    drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, state.allBubbles, state.paddedMinDate, state.paddedMaxDate);
+    if (noDataMessage) noDataMessage.style.display = 'block';
+}
+
+export { state, clearChart };
+
 export default state; 
