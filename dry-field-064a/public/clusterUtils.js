@@ -1,3 +1,5 @@
+import { bubblesOverlap } from './bubbleUtils.js';
+
 /**
  * Calculates the overlap between two bubbles.
  * @param {Object} b1

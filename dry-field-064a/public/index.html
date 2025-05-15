@@ -103,8 +103,8 @@
         </div>
     </div>
     <script type="module">
-    import { createLoanBubbleFromAPI, useLoanDataForBubbles, findClusters } from './clusterUtils.js';
-    import { getBubbleOverlap } from './bubbleUtils.js';
+    import { createLoanBubbleFromAPI, useLoanDataForBubbles, findClusters, getPercentile } from './clusterUtils.js';
+    import { getBubbleOverlap, bubblesOverlap } from './bubbleUtils.js';
     import { applyOutwardForce, revertClusterSmoothly } from './physics.js';
     import { MAX_FRAMES, REVERT_DELAY } from './constants.js';
     import { drawAxes, draw, timeScale, niceDateTicks, niceLinearTicks, TICK_LENGTH, TICK_PADDING, DATE_TICK_COUNT } from './renderUtils.js';
@@ -247,14 +247,6 @@
         ctx.clearRect(0, 0, WIDTH, HEIGHT);
         drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
         noDataMessage.style.display = 'block';
-    }
-
-    // --- Detect Overlaps and Form Clusters ---
-    function bubblesOverlap(b1, b2) {
-        const dx = b1.x - b2.x;
-        const dy = b1.y - b2.y;
-        const dist = Math.hypot(dx, dy);
-        return dist < (b1.r + b2.r) * 0.98;
     }
 
     // --- Mouse Handling ---
