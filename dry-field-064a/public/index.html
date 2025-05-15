@@ -112,6 +112,9 @@
     import { fetchLoanData, loadBubbleImages } from './dataService.js';
     import { packClusterBubbles, animateClusterToPacked, updateClusterAnimation } from './clusterLayout.js';
     import { createNoDataMessage, setupWalletDropdown, setupImageToggle, setupResponsiveCanvas } from './uiManager.js';
+    import EventManager from './event/EventManager.js';
+    import { animate } from './animation.js';
+    import { state, clearChart } from './state.js';
     // --- DOM and Canvas Setup ---
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -152,7 +155,6 @@
     let mouseY = 0;
     let PADDED_MIN_DATE = null;
     let PADDED_MAX_DATE = null;
-    let showImages = false; // Flag to control whether to show NFT images in bubbles
 
     // Wallet addresses
     const WALLETS = [
@@ -181,12 +183,13 @@
     const noDataMessage = createNoDataMessage();
 
     // Set up the wallet dropdown
+    const walletSelect = document.getElementById('walletSelect');
     setupWalletDropdown(walletSelect, WALLETS);
 
     // Set up image toggle
     setupImageToggle(imageToggle, (showImagesState) => {
-        showImages = showImagesState;
-        draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
+        state.showImages = showImagesState;
+        draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, state.showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
     });
 
     // Set up responsive canvas sizing
@@ -198,7 +201,7 @@
         CHART_PADDING_TOP = dimensions.chartPaddingTop;
         CHART_PADDING_BOTTOM = dimensions.chartPaddingBottom;
         
-        draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
+        draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, state.showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
     });
 
     // Trigger initial load with image handling
@@ -229,8 +232,8 @@
                 },
                 (totalLoaded) => {
                     console.log(`All ${totalLoaded} images loaded, redrawing chart`);
-                    if (showImages) {
-                        draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
+                    if (state.showImages) {
+                        draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, state.showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
                     }
                 }
             );
@@ -239,27 +242,21 @@
         }
     });
 
-    // --- Clear chart and state ---
-    function clearChart() {
-        allBubbles.length = 0;
-        clusters.length = 0;
-        singleBubbles.length = 0;
-        ctx.clearRect(0, 0, WIDTH, HEIGHT);
-        drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
-        noDataMessage.style.display = 'block';
-    }
-
     // --- Mouse Handling ---
-    canvas.addEventListener('mousemove', (e) => {
+    const canvasEventManager = new EventManager(canvas);
+    canvasEventManager.on('mouseout', () => {
+        tooltip.style.visibility = 'hidden';
+    });
+    canvasEventManager.on('mousemove', (e) => {
         const rect = canvas.getBoundingClientRect();
-        mouseX = e.clientX - rect.left;
-        mouseY = e.clientY - rect.top;
+        window.mouseX = e.clientX - rect.left;
+        window.mouseY = e.clientY - rect.top;
 
         for (const cluster of clusters) {
             let hovering = false;
             for (const b of cluster.bubbles) {
-                const dx = mouseX - b.x;
-                const dy = mouseY - b.y;
+                const dx = window.mouseX - b.x;
+                const dy = window.mouseY - b.y;
                 const dist = Math.hypot(dx, dy);
                 if (dist < b.r) {
                     hovering = true;
@@ -294,35 +291,9 @@
     });
 
     // --- Animation loop ---
-    function animate() {
-        for (const cluster of clusters) {
-            if (cluster.state === "expanding") {
-                // On first frame, compute packed positions
-                if (!cluster.packedInitialized) {
-                    packClusterBubbles(cluster, CHART_PADDING_X, WIDTH, CHART_PADDING_TOP, CHART_HEIGHT);
-                    cluster.packedInitialized = true;
-                }
-                // Animate bubbles to packed positions
-                animateClusterToPacked(cluster, 0.18); // t controls animation speed
-                cluster.frameCount++;
-                if (cluster.frameCount >= MAX_FRAMES) {
-                    cluster.state = "expanded";
-                    for (const b of cluster.bubbles) {
-                        b.showTooltip = true;
-                    }
-                }
-            } else if (cluster.state === "reverting") {
-                revertClusterSmoothly(cluster, WIDTH, HEIGHT);
-                cluster.packedInitialized = false;
-            }
-        }
-        draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
-        updateTooltip(tooltip, mouseX, mouseY, singleBubbles, clusters, canvas, allBubbles);
-        requestAnimationFrame(animate);
-    }
-
-    // Start animation
-    animate();
+    animate(
+        ctx, tooltip, canvas, clusters, singleBubbles, allBubbles, state.showImages, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, PADDED_MIN_DATE, PADDED_MAX_DATE, draw, updateTooltip, packClusterBubbles, animateClusterToPacked, revertClusterSmoothly, MAX_FRAMES
+    );
 
     // Add overlap stats to the animation loop for debugging
     function logOverlapStats() {
@@ -345,59 +316,52 @@
     }
 
     // Add wallet change event handler
-    walletSelect.addEventListener('change', async (e) => {
-        try {
-            const selectedWallet = e.target.value;
-            if (selectedWallet) {
-                window.lastWalletSelected = selectedWallet; // Store the selected wallet
-                const data = await fetchLoanData(selectedWallet);
-                if (data && data.data && data.data.length > 0) {
-                    // Clear existing data
-                    allBubbles.length = 0;
-                    clusters.length = 0;
-                    singleBubbles.length = 0;
-                    
-                    // Update with new data
-                    useLoanDataForBubbles(
-                        data.data,
-                        allBubbles,
-                        clusters,
-                        singleBubbles,
-                        clearChart,
-                        (bubbles) => findClusters(bubbles, clusters, singleBubbles, bubblesOverlap, VELOCITY_POWER, BASE_VELOCITY),
-                        (loan, ...bubbleArgs) => createLoanBubbleFromAPI(loan, ...bubbleArgs),
-                        (min, max) => { PADDED_MIN_DATE = min; PADDED_MAX_DATE = max; },
-                        MIN_PADDING_PERCENT,
-                        MAX_PADDING_PERCENT,
-                        CHART_PADDING_X,
-                        WIDTH,
-                        CHART_PADDING_TOP,
-                        CHART_HEIGHT,
-                        BUBBLE_PADDING_FACTOR
-                    );
-                    
-                    // Load images for the new bubbles
-                    loadBubbleImages(allBubbles, 
-                        (loaded, total) => {
-                            console.log(`${loaded}/${total} images loaded (${Math.round(loaded/total*100)}%)`);
-                        },
-                        (totalLoaded) => {
-                            console.log(`All ${totalLoaded} images loaded, redrawing chart`);
-                            if (showImages) {
-                                draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
-                            }
+    const walletEventManager = new EventManager(walletSelect);
+    walletEventManager.on('change', async (e) => {
+        const selectedWallet = e.target.value;
+        if (selectedWallet) {
+            window.lastWalletSelected = selectedWallet; // Store the selected wallet
+            const data = await fetchLoanData(selectedWallet);
+            if (data && data.data && data.data.length > 0) {
+                // Clear existing data
+                allBubbles.length = 0;
+                clusters.length = 0;
+                singleBubbles.length = 0;
+                // Update with new data
+                useLoanDataForBubbles(
+                    data.data,
+                    allBubbles,
+                    clusters,
+                    singleBubbles,
+                    clearChart,
+                    (bubbles) => findClusters(bubbles, clusters, singleBubbles, bubblesOverlap, VELOCITY_POWER, BASE_VELOCITY),
+                    (loan, ...bubbleArgs) => createLoanBubbleFromAPI(loan, ...bubbleArgs),
+                    (min, max) => { PADDED_MIN_DATE = min; PADDED_MAX_DATE = max; },
+                    MIN_PADDING_PERCENT,
+                    MAX_PADDING_PERCENT,
+                    CHART_PADDING_X,
+                    WIDTH,
+                    CHART_PADDING_TOP,
+                    CHART_HEIGHT,
+                    BUBBLE_PADDING_FACTOR
+                );
+                // Load images for the new bubbles
+                loadBubbleImages(allBubbles, 
+                    (loaded, total) => {
+                        console.log(`${loaded}/${total} images loaded (${Math.round(loaded/total*100)}%)`);
+                    },
+                    (totalLoaded) => {
+                        console.log(`All ${totalLoaded} images loaded, redrawing chart`);
+                        if (state.showImages) {
+                            draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, state.showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
                         }
-                    );
-                    
-                    noDataMessage.style.display = 'none';
-                } else {
-                    clearChart();
-                    console.warn('API response: no loans', data);
-                }
+                    }
+                );
+                noDataMessage.style.display = 'none';
+            } else {
+                clearChart();
+                console.warn('API response: no loans', data);
             }
-        } catch (err) {
-            clearChart();
-            console.error('Error loading wallet data:', err);
         }
     });
     </script>

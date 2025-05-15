@@ -42,9 +42,8 @@ function loadBubbleImages(bubbles, onProgress, onComplete) {
     bubbles.forEach(bubble => {
         if (!bubble.img && bubble.imageUrl) {
             bubble.img = new Image();
-            bubble.img.crossOrigin = "Anonymous"; // Avoid CORS issues
+            bubble.img.crossOrigin = "Anonymous";
             
-            // Add load and error handlers
             bubble.img.onload = () => {
                 loadedImages++;
                 if (onProgress) onProgress(loadedImages, totalBubbles);
@@ -55,13 +54,11 @@ function loadBubbleImages(bubbles, onProgress, onComplete) {
             
             bubble.img.onerror = (e) => {
                 console.error(`Failed to load image for ${bubble.name}: ${bubble.imageUrl}`, e);
-                // Try a fallback method if the main one fails
                 if (bubble.imageUrl.includes('reservoir.tools') && bubble.nftAddress && bubble.nftId) {
                     console.log('Attempting direct NFT image loading for', bubble.name);
                     const fallbackUrl = `https://nfts.reservoir.tools/token/ethereum/${bubble.nftAddress}:${bubble.nftId}/image/v1`;
                     bubble.img.src = fallbackUrl;
                 } else {
-                    // Still count as "loaded" even if it failed
                     loadedImages++;
                     if (onProgress) onProgress(loadedImages, totalBubbles);
                     if (loadedImages >= totalBubbles && onComplete) {
@@ -70,10 +67,8 @@ function loadBubbleImages(bubbles, onProgress, onComplete) {
                 }
             };
             
-            // Set the source AFTER setting up event handlers
             bubble.img.src = bubble.imageUrl;
         } else if (bubble.img) {
-            // For already loaded images
             if (bubble.img.complete && bubble.img.naturalWidth > 0) {
                 loadedImages++;
                 if (onProgress) onProgress(loadedImages, totalBubbles);
@@ -82,7 +77,6 @@ function loadBubbleImages(bubbles, onProgress, onComplete) {
                 }
             }
         } else {
-            // No image to load
             loadedImages++;
             if (onProgress) onProgress(loadedImages, totalBubbles);
             if (loadedImages >= totalBubbles && onComplete) {
