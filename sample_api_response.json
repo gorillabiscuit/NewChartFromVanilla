@@ -1,0 +1,390 @@
+{
+	"meta":
+	[
+		{
+			"name": "protocolName",
+			"type": "String"
+		},
+		{
+			"name": "loanId",
+			"type": "String"
+		},
+		{
+			"name": "loanContractAddress",
+			"type": "String"
+		},
+		{
+			"name": "nftProjectName",
+			"type": "Nullable(String)"
+		},
+		{
+			"name": "nftProjectImageUri",
+			"type": "String"
+		},
+		{
+			"name": "nftAddress",
+			"type": "String"
+		},
+		{
+			"name": "nftId",
+			"type": "String"
+		},
+		{
+			"name": "nftName",
+			"type": "String"
+		},
+		{
+			"name": "nftImageSmallUri",
+			"type": "String"
+		},
+		{
+			"name": "nftImageLargeUri",
+			"type": "String"
+		},
+		{
+			"name": "status",
+			"type": "String"
+		},
+		{
+			"name": "currencyName",
+			"type": "Nullable(String)"
+		},
+		{
+			"name": "principalAmount",
+			"type": "Float32"
+		},
+		{
+			"name": "principalAmountETH",
+			"type": "Float64"
+		},
+		{
+			"name": "principalAmountUSD",
+			"type": "Float64"
+		},
+		{
+			"name": "maximumRepaymentAmount",
+			"type": "Float32"
+		},
+		{
+			"name": "maximumRepaymentAmountETH",
+			"type": "Float64"
+		},
+		{
+			"name": "maximumRepaymentAmountUSD",
+			"type": "Float64"
+		},
+		{
+			"name": "apr",
+			"type": "Float64"
+		},
+		{
+			"name": "durationDays",
+			"type": "Nullable(Int64)"
+		},
+		{
+			"name": "borrowerAddress",
+			"type": "String"
+		},
+		{
+			"name": "lenderAddress",
+			"type": "String"
+		},
+		{
+			"name": "dueTime",
+			"type": "Nullable(DateTime)"
+		},
+		{
+			"name": "startTime",
+			"type": "DateTime"
+		},
+		{
+			"name": "hoursUntilDue",
+			"type": "Nullable(Float64)"
+		}
+	],
+
+	"data":
+	[
+		{
+			"protocolName": "NFTfi",
+			"loanId": "3893",
+			"loanContractAddress": "",
+			"nftProjectName": "Wrapped Cryptopunks",
+			"nftProjectImageUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/z9JRSpLYGu7%2BCZoKWtAuABFuoqH0Xw8RwP3XGRDltop1fhPM8HEzGHYJJoP7nCutORfRiuoOYI9cOjaDwPMUnvsZ4I%2FEcSV51ZEMCeIgkaUzJ3sC7iGBCJmA%2FXjNPV9kjocMgQxxcILm31shdGOIv44J39zOuznSVkFGmZsbEGU0Kc92OZF5IjYqO4KWWg0JnYF4QaHmDbV6H7bQS5zIkg%3D%3D?width=250",
+			"nftAddress": "0xb7F7F6C52F2e2fdb1963Eab30438024864c313F6",
+			"nftId": "2704",
+			"nftName": "W#2704",
+			"nftImageSmallUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/j9t%2BwqJCQ%2BRiK2rEPgWTHNW3tNoJqGPMRjOlLHsTaJc506G6yf5S%2FnNHTt%2B1zpXAkQOvpj%2BtPywhiZ0yGW0qv02f7WxwsJhuWfRnurXiKPk%3D.png?width=1000",
+			"nftImageLargeUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/j9t%2BwqJCQ%2BRiK2rEPgWTHNW3tNoJqGPMRjOlLHsTaJc506G6yf5S%2FnNHTt%2B1zpXAkQOvpj%2BtPywhiZ0yGW0qv02f7WxwsJhuWfRnurXiKPk%3D.png?width=1000",
+			"status": "Active",
+			"currencyName": "wETH",
+			"principalAmount": 34,
+			"principalAmountETH": 34,
+			"principalAmountUSD": 88441.47900390625,
+			"maximumRepaymentAmount": 34.36329,
+			"maximumRepaymentAmountETH": 34.36328887939453,
+			"maximumRepaymentAmountUSD": 89386.47329212166,
+			"apr": 13.000011764705881,
+			"durationDays": 30,
+			"borrowerAddress": "0xD79b937791724e47F193f67162B92cDFbF7ABDFd",
+			"lenderAddress": "0x66c7A7348250F453A37cF86410A946F9668dE386",
+			"dueTime": "2025-05-20 10:19:47",
+			"startTime": "2025-04-20 10:19:47",
+			"hoursUntilDue": 144
+		},
+		{
+			"protocolName": "NFTfi",
+			"loanId": "3897",
+			"loanContractAddress": "",
+			"nftProjectName": "Wrapped Cryptopunks",
+			"nftProjectImageUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/z9JRSpLYGu7%2BCZoKWtAuABFuoqH0Xw8RwP3XGRDltop1fhPM8HEzGHYJJoP7nCutORfRiuoOYI9cOjaDwPMUnvsZ4I%2FEcSV51ZEMCeIgkaUzJ3sC7iGBCJmA%2FXjNPV9kjocMgQxxcILm31shdGOIv44J39zOuznSVkFGmZsbEGU0Kc92OZF5IjYqO4KWWg0JnYF4QaHmDbV6H7bQS5zIkg%3D%3D?width=250",
+			"nftAddress": "0xb7F7F6C52F2e2fdb1963Eab30438024864c313F6",
+			"nftId": "4371",
+			"nftName": "W#4371",
+			"nftImageSmallUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/j9t%2BwqJCQ%2BRiK2rEPgWTHNW3tNoJqGPMRjOlLHsTaJfG31A8e%2FsHZU5BeI8yiHkcMgQ%2BpU3V9RF0v55Arw7A6TVJd0%2Bu%2F7XirOZ8BwMzTxE%3D.png?width=1000",
+			"nftImageLargeUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/j9t%2BwqJCQ%2BRiK2rEPgWTHNW3tNoJqGPMRjOlLHsTaJfG31A8e%2FsHZU5BeI8yiHkcMgQ%2BpU3V9RF0v55Arw7A6TVJd0%2Bu%2F7XirOZ8BwMzTxE%3D.png?width=1000",
+			"status": "Active",
+			"currencyName": "wETH",
+			"principalAmount": 34,
+			"principalAmountETH": 34,
+			"principalAmountUSD": 88441.47900390625,
+			"maximumRepaymentAmount": 34.36329,
+			"maximumRepaymentAmountETH": 34.36328887939453,
+			"maximumRepaymentAmountUSD": 89386.47329212166,
+			"apr": 13.000011764705881,
+			"durationDays": 30,
+			"borrowerAddress": "0xD79b937791724e47F193f67162B92cDFbF7ABDFd",
+			"lenderAddress": "0x66c7A7348250F453A37cF86410A946F9668dE386",
+			"dueTime": "2025-05-20 10:31:23",
+			"startTime": "2025-04-20 10:31:23",
+			"hoursUntilDue": 144
+		},
+		{
+			"protocolName": "NFTfi",
+			"loanId": "3898",
+			"loanContractAddress": "",
+			"nftProjectName": "Wrapped Cryptopunks",
+			"nftProjectImageUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/z9JRSpLYGu7%2BCZoKWtAuABFuoqH0Xw8RwP3XGRDltop1fhPM8HEzGHYJJoP7nCutORfRiuoOYI9cOjaDwPMUnvsZ4I%2FEcSV51ZEMCeIgkaUzJ3sC7iGBCJmA%2FXjNPV9kjocMgQxxcILm31shdGOIv44J39zOuznSVkFGmZsbEGU0Kc92OZF5IjYqO4KWWg0JnYF4QaHmDbV6H7bQS5zIkg%3D%3D?width=250",
+			"nftAddress": "0xb7F7F6C52F2e2fdb1963Eab30438024864c313F6",
+			"nftId": "3480",
+			"nftName": "W#3480",
+			"nftImageSmallUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/j9t%2BwqJCQ%2BRiK2rEPgWTHNW3tNoJqGPMRjOlLHsTaJdKKOBg%2BRStUwVJLDrzSi7lDTbnXvBAXgA3p7R9ERLKQhXultto096JVHuQy3typuM%3D.png?width=1000",
+			"nftImageLargeUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/j9t%2BwqJCQ%2BRiK2rEPgWTHNW3tNoJqGPMRjOlLHsTaJdKKOBg%2BRStUwVJLDrzSi7lDTbnXvBAXgA3p7R9ERLKQhXultto096JVHuQy3typuM%3D.png?width=1000",
+			"status": "Active",
+			"currencyName": "wETH",
+			"principalAmount": 34,
+			"principalAmountETH": 34,
+			"principalAmountUSD": 88441.47900390625,
+			"maximumRepaymentAmount": 34.36329,
+			"maximumRepaymentAmountETH": 34.36328887939453,
+			"maximumRepaymentAmountUSD": 89386.47329212166,
+			"apr": 13.000011764705881,
+			"durationDays": 30,
+			"borrowerAddress": "0xD79b937791724e47F193f67162B92cDFbF7ABDFd",
+			"lenderAddress": "0x66c7A7348250F453A37cF86410A946F9668dE386",
+			"dueTime": "2025-05-20 10:41:23",
+			"startTime": "2025-04-20 10:41:23",
+			"hoursUntilDue": 145
+		},
+		{
+			"protocolName": "NFTfi",
+			"loanId": "3899",
+			"loanContractAddress": "",
+			"nftProjectName": "Wrapped Cryptopunks",
+			"nftProjectImageUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/z9JRSpLYGu7%2BCZoKWtAuABFuoqH0Xw8RwP3XGRDltop1fhPM8HEzGHYJJoP7nCutORfRiuoOYI9cOjaDwPMUnvsZ4I%2FEcSV51ZEMCeIgkaUzJ3sC7iGBCJmA%2FXjNPV9kjocMgQxxcILm31shdGOIv44J39zOuznSVkFGmZsbEGU0Kc92OZF5IjYqO4KWWg0JnYF4QaHmDbV6H7bQS5zIkg%3D%3D?width=250",
+			"nftAddress": "0xb7F7F6C52F2e2fdb1963Eab30438024864c313F6",
+			"nftId": "9944",
+			"nftName": "W#9944",
+			"nftImageSmallUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/j9t%2BwqJCQ%2BRiK2rEPgWTHNW3tNoJqGPMRjOlLHsTaJcdTt5kLumZanLOVgMgYEV4jOMAzTRVajdsQEwDftLv0%2BVUByGHTFaT3XgNs7yVlIw%3D.png?width=1000",
+			"nftImageLargeUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/j9t%2BwqJCQ%2BRiK2rEPgWTHNW3tNoJqGPMRjOlLHsTaJcdTt5kLumZanLOVgMgYEV4jOMAzTRVajdsQEwDftLv0%2BVUByGHTFaT3XgNs7yVlIw%3D.png?width=1000",
+			"status": "Active",
+			"currencyName": "wETH",
+			"principalAmount": 34,
+			"principalAmountETH": 34,
+			"principalAmountUSD": 88441.47900390625,
+			"maximumRepaymentAmount": 34.36329,
+			"maximumRepaymentAmountETH": 34.36328887939453,
+			"maximumRepaymentAmountUSD": 89386.47329212166,
+			"apr": 13.000011764705881,
+			"durationDays": 30,
+			"borrowerAddress": "0xD79b937791724e47F193f67162B92cDFbF7ABDFd",
+			"lenderAddress": "0x66c7A7348250F453A37cF86410A946F9668dE386",
+			"dueTime": "2025-05-20 10:47:11",
+			"startTime": "2025-04-20 10:47:11",
+			"hoursUntilDue": 145
+		},
+		{
+			"protocolName": "NFTfi",
+			"loanId": "3900",
+			"loanContractAddress": "",
+			"nftProjectName": "Wrapped Cryptopunks",
+			"nftProjectImageUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/z9JRSpLYGu7%2BCZoKWtAuABFuoqH0Xw8RwP3XGRDltop1fhPM8HEzGHYJJoP7nCutORfRiuoOYI9cOjaDwPMUnvsZ4I%2FEcSV51ZEMCeIgkaUzJ3sC7iGBCJmA%2FXjNPV9kjocMgQxxcILm31shdGOIv44J39zOuznSVkFGmZsbEGU0Kc92OZF5IjYqO4KWWg0JnYF4QaHmDbV6H7bQS5zIkg%3D%3D?width=250",
+			"nftAddress": "0xb7F7F6C52F2e2fdb1963Eab30438024864c313F6",
+			"nftId": "4134",
+			"nftName": "W#4134",
+			"nftImageSmallUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/j9t%2BwqJCQ%2BRiK2rEPgWTHNW3tNoJqGPMRjOlLHsTaJdCQ9cOZ7pcLQfZ9jVWc%2BiJfT5o3T74kawUZGwhogCWKEW9ZVl5D7u7gS7RzD5rqEM%3D.png?width=1000",
+			"nftImageLargeUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/j9t%2BwqJCQ%2BRiK2rEPgWTHNW3tNoJqGPMRjOlLHsTaJdCQ9cOZ7pcLQfZ9jVWc%2BiJfT5o3T74kawUZGwhogCWKEW9ZVl5D7u7gS7RzD5rqEM%3D.png?width=1000",
+			"status": "Active",
+			"currencyName": "wETH",
+			"principalAmount": 34,
+			"principalAmountETH": 34,
+			"principalAmountUSD": 88441.47900390625,
+			"maximumRepaymentAmount": 34.36329,
+			"maximumRepaymentAmountETH": 34.36328887939453,
+			"maximumRepaymentAmountUSD": 89386.47329212166,
+			"apr": 13.000011764705881,
+			"durationDays": 30,
+			"borrowerAddress": "0xD79b937791724e47F193f67162B92cDFbF7ABDFd",
+			"lenderAddress": "0x66c7A7348250F453A37cF86410A946F9668dE386",
+			"dueTime": "2025-05-20 10:50:47",
+			"startTime": "2025-04-20 10:50:47",
+			"hoursUntilDue": 145
+		},
+		{
+			"protocolName": "NFTfi",
+			"loanId": "3901",
+			"loanContractAddress": "",
+			"nftProjectName": "Wrapped Cryptopunks",
+			"nftProjectImageUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/z9JRSpLYGu7%2BCZoKWtAuABFuoqH0Xw8RwP3XGRDltop1fhPM8HEzGHYJJoP7nCutORfRiuoOYI9cOjaDwPMUnvsZ4I%2FEcSV51ZEMCeIgkaUzJ3sC7iGBCJmA%2FXjNPV9kjocMgQxxcILm31shdGOIv44J39zOuznSVkFGmZsbEGU0Kc92OZF5IjYqO4KWWg0JnYF4QaHmDbV6H7bQS5zIkg%3D%3D?width=250",
+			"nftAddress": "0xb7F7F6C52F2e2fdb1963Eab30438024864c313F6",
+			"nftId": "2757",
+			"nftName": "W#2757",
+			"nftImageSmallUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/j9t%2BwqJCQ%2BRiK2rEPgWTHNW3tNoJqGPMRjOlLHsTaJdDMbBn98xf9OILVvuo5UQ4aPoq6Lbxx%2B7yqgB%2BhPj9cLIhFPcyf6u%2F4Lw0ERT6enY%3D.png?width=1000",
+			"nftImageLargeUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/j9t%2BwqJCQ%2BRiK2rEPgWTHNW3tNoJqGPMRjOlLHsTaJdDMbBn98xf9OILVvuo5UQ4aPoq6Lbxx%2B7yqgB%2BhPj9cLIhFPcyf6u%2F4Lw0ERT6enY%3D.png?width=1000",
+			"status": "Active",
+			"currencyName": "wETH",
+			"principalAmount": 34,
+			"principalAmountETH": 34,
+			"principalAmountUSD": 88441.47900390625,
+			"maximumRepaymentAmount": 34.36329,
+			"maximumRepaymentAmountETH": 34.36328887939453,
+			"maximumRepaymentAmountUSD": 89386.47329212166,
+			"apr": 13.000011764705881,
+			"durationDays": 30,
+			"borrowerAddress": "0xD79b937791724e47F193f67162B92cDFbF7ABDFd",
+			"lenderAddress": "0x66c7A7348250F453A37cF86410A946F9668dE386",
+			"dueTime": "2025-05-20 10:51:47",
+			"startTime": "2025-04-20 10:51:47",
+			"hoursUntilDue": 145
+		},
+		{
+			"protocolName": "Gondi",
+			"loanId": "4686",
+			"loanContractAddress": "",
+			"nftProjectName": "Wrapped Cryptopunks",
+			"nftProjectImageUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/z9JRSpLYGu7%2BCZoKWtAuABFuoqH0Xw8RwP3XGRDltop1fhPM8HEzGHYJJoP7nCutORfRiuoOYI9cOjaDwPMUnvsZ4I%2FEcSV51ZEMCeIgkaUzJ3sC7iGBCJmA%2FXjNPV9kjocMgQxxcILm31shdGOIv44J39zOuznSVkFGmZsbEGU0Kc92OZF5IjYqO4KWWg0JnYF4QaHmDbV6H7bQS5zIkg%3D%3D?width=250",
+			"nftAddress": "0xb7f7f6c52f2e2fdb1963eab30438024864c313f6",
+			"nftId": "4589",
+			"nftName": "W#4589",
+			"nftImageSmallUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/j9t%2BwqJCQ%2BRiK2rEPgWTHNW3tNoJqGPMRjOlLHsTaJf7XbMX5SKdQA2q6qKlgAkGHqFfGs769sWz7NcqfNHOzw2xplkqayHZYWjwAe6hf1Y%3D.png?width=1000",
+			"nftImageLargeUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/j9t%2BwqJCQ%2BRiK2rEPgWTHNW3tNoJqGPMRjOlLHsTaJf7XbMX5SKdQA2q6qKlgAkGHqFfGs769sWz7NcqfNHOzw2xplkqayHZYWjwAe6hf1Y%3D.png?width=1000",
+			"status": "Active",
+			"currencyName": "wETH",
+			"principalAmount": 85,
+			"principalAmountETH": 85,
+			"principalAmountUSD": 221103.69750976562,
+			"maximumRepaymentAmount": 85.70366,
+			"maximumRepaymentAmountETH": 85.70365905761719,
+			"maximumRepaymentAmountUSD": 222934.0695030056,
+			"apr": 12.590000033378601,
+			"durationDays": 25,
+			"borrowerAddress": "0xd79b937791724e47f193f67162b92cdfbf7abdfd",
+			"lenderAddress": "0xf9b64dc47dbe8c75f6ffc573cbc7599404bfe5a7",
+			"dueTime": "2025-05-20 14:07:42",
+			"startTime": "2025-04-25 14:13:11",
+			"hoursUntilDue": 148
+		},
+		{
+			"protocolName": "Gondi",
+			"loanId": "4486",
+			"loanContractAddress": "",
+			"nftProjectName": "Wrapped Cryptopunks",
+			"nftProjectImageUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/z9JRSpLYGu7%2BCZoKWtAuABFuoqH0Xw8RwP3XGRDltop1fhPM8HEzGHYJJoP7nCutORfRiuoOYI9cOjaDwPMUnvsZ4I%2FEcSV51ZEMCeIgkaUzJ3sC7iGBCJmA%2FXjNPV9kjocMgQxxcILm31shdGOIv44J39zOuznSVkFGmZsbEGU0Kc92OZF5IjYqO4KWWg0JnYF4QaHmDbV6H7bQS5zIkg%3D%3D?width=250",
+			"nftAddress": "0xb7f7f6c52f2e2fdb1963eab30438024864c313f6",
+			"nftId": "7584",
+			"nftName": "W#7584",
+			"nftImageSmallUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/j9t%2BwqJCQ%2BRiK2rEPgWTHNW3tNoJqGPMRjOlLHsTaJcEMNggXtvIr81QwzYoJlaRnoFhygozw1v9dk40aHImEvnM5SsdvYgXnqDZvokj758%3D.png?width=1000",
+			"nftImageLargeUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/j9t%2BwqJCQ%2BRiK2rEPgWTHNW3tNoJqGPMRjOlLHsTaJcEMNggXtvIr81QwzYoJlaRnoFhygozw1v9dk40aHImEvnM5SsdvYgXnqDZvokj758%3D.png?width=1000",
+			"status": "Active",
+			"currencyName": "USDC",
+			"principalAmount": 60000,
+			"principalAmountETH": 23.066100012980314,
+			"principalAmountUSD": 60000,
+			"maximumRepaymentAmount": 60709.645,
+			"maximumRepaymentAmountETH": 23.33891220850493,
+			"maximumRepaymentAmountUSD": 60709.64453125,
+			"apr": 18.449999392032623,
+			"durationDays": 30,
+			"borrowerAddress": "0xd79b937791724e47f193f67162b92cdfbf7abdfd",
+			"lenderAddress": "0xf4fb9fa23edb32215e5284cf7dbfdb5607d51a5b",
+			"dueTime": "2025-05-20 16:17:23",
+			"startTime": "2025-04-20 16:17:23",
+			"hoursUntilDue": 150
+		},
+		{
+			"protocolName": "Gondi",
+			"loanId": "2494",
+			"loanContractAddress": "",
+			"nftProjectName": "Wrapped Cryptopunks",
+			"nftProjectImageUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/z9JRSpLYGu7%2BCZoKWtAuABFuoqH0Xw8RwP3XGRDltop1fhPM8HEzGHYJJoP7nCutORfRiuoOYI9cOjaDwPMUnvsZ4I%2FEcSV51ZEMCeIgkaUzJ3sC7iGBCJmA%2FXjNPV9kjocMgQxxcILm31shdGOIv44J39zOuznSVkFGmZsbEGU0Kc92OZF5IjYqO4KWWg0JnYF4QaHmDbV6H7bQS5zIkg%3D%3D?width=250",
+			"nftAddress": "0xb7f7f6c52f2e2fdb1963eab30438024864c313f6",
+			"nftId": "6151",
+			"nftName": "W#6151",
+			"nftImageSmallUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/j9t%2BwqJCQ%2BRiK2rEPgWTHNW3tNoJqGPMRjOlLHsTaJeVjsVO1yL02oA%2FCU4sx1lOpzUn5mW35Dcp18ywQPkuo4LFvkfRrpb%2BIhLzW%2BN79z0%3D.png?width=1000",
+			"nftImageLargeUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/j9t%2BwqJCQ%2BRiK2rEPgWTHNW3tNoJqGPMRjOlLHsTaJeVjsVO1yL02oA%2FCU4sx1lOpzUn5mW35Dcp18ywQPkuo4LFvkfRrpb%2BIhLzW%2BN79z0%3D.png?width=1000",
+			"status": "Active",
+			"currencyName": "USDC",
+			"principalAmount": 180000,
+			"principalAmountETH": 69.19830003894094,
+			"principalAmountUSD": 180000,
+			"maximumRepaymentAmount": 186657.53,
+			"maximumRepaymentAmountETH": 71.75768806647497,
+			"maximumRepaymentAmountUSD": 186657.53125,
+			"apr": 16.009999811649323,
+			"durationDays": 90,
+			"borrowerAddress": "0xd79b937791724e47f193f67162b92cdfbf7abdfd",
+			"lenderAddress": "0x7fe4b2632f5ae6d930677d662af26bc0a06672b3",
+			"dueTime": "2025-05-20 16:49:35",
+			"startTime": "2025-02-19 16:49:35",
+			"hoursUntilDue": 151
+		},
+		{
+			"protocolName": "Gondi",
+			"loanId": "5319",
+			"loanContractAddress": "",
+			"nftProjectName": "Wrapped Cryptopunks",
+			"nftProjectImageUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/z9JRSpLYGu7%2BCZoKWtAuABFuoqH0Xw8RwP3XGRDltop1fhPM8HEzGHYJJoP7nCutORfRiuoOYI9cOjaDwPMUnvsZ4I%2FEcSV51ZEMCeIgkaUzJ3sC7iGBCJmA%2FXjNPV9kjocMgQxxcILm31shdGOIv44J39zOuznSVkFGmZsbEGU0Kc92OZF5IjYqO4KWWg0JnYF4QaHmDbV6H7bQS5zIkg%3D%3D?width=250",
+			"nftAddress": "0xb7f7f6c52f2e2fdb1963eab30438024864c313f6",
+			"nftId": "5274",
+			"nftName": "W#5274",
+			"nftImageSmallUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/j9t%2BwqJCQ%2BRiK2rEPgWTHNW3tNoJqGPMRjOlLHsTaJfUyyLsT7r6Cuj%2B62x6inNUAwGwKM40WMHtle9tczZDkXqjqNw0w%2Fh%2BPu5zuMQgkr4%3D.png?width=1000",
+			"nftImageLargeUri": "https:\/\/img.reservoir.tools\/images\/v2\/mainnet\/j9t%2BwqJCQ%2BRiK2rEPgWTHNW3tNoJqGPMRjOlLHsTaJfUyyLsT7r6Cuj%2B62x6inNUAwGwKM40WMHtle9tczZDkXqjqNw0w%2Fh%2BPu5zuMQgkr4%3D.png?width=1000",
+			"status": "Active",
+			"currencyName": "wETH",
+			"principalAmount": 32.5,
+			"principalAmountETH": 32.5,
+			"principalAmountUSD": 84539.64904785156,
+			"maximumRepaymentAmount": 32.60204,
+			"maximumRepaymentAmountETH": 32.6020393371582,
+			"maximumRepaymentAmountUSD": 84805.07580946479,
+			"apr": 11.460000276565552,
+			"durationDays": 10,
+			"borrowerAddress": "0xd79b937791724e47f193f67162b92cdfbf7abdfd",
+			"lenderAddress": "0xcc8cf53648899b5dac6e0074b4da0057c7d887e1",
+			"dueTime": "2025-05-21 21:29:55",
+			"startTime": "2025-05-11 07:26:11",
+			"hoursUntilDue": 179
+		}
+	],
+
+	"rows": 10,
+
+	"rows_before_limit_at_least": 58,
+
+	"statistics":
+	{
+		"elapsed": 0.493319012,
+		"rows_read": 68464,
+		"bytes_read": 49352939
+	}
+}
