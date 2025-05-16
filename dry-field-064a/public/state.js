@@ -8,6 +8,7 @@ const state = {
     // Mouse state
     mouseX: 0,
     mouseY: 0,
+    mousePosition: { x: 0, y: 0 },
 
     // Date ranges
     paddedMinDate: null,
@@ -29,6 +30,7 @@ const state = {
 export function updateMousePosition(x, y) {
     state.mouseX = x;
     state.mouseY = y;
+    state.mousePosition = { x, y };
 }
 
 export function updateCanvasDimensions(dimensions) {

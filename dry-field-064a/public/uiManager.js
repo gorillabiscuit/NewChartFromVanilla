@@ -131,9 +131,31 @@ function setupResponsiveCanvas(canvas, ctx, onResize) {
     return resizeCanvas;
 }
 
+/**
+ * Setup wallet change event handler
+ * 
+ * @param {HTMLSelectElement} walletSelect - The wallet select element
+ * @param {Function} onWalletChange - Callback when wallet is changed
+ * @returns {EventManager} - The event manager instance
+ */
+function setupWalletChangeHandler(walletSelect, onWalletChange) {
+    const eventManager = new EventManager(walletSelect);
+    eventManager.on('change', async (e) => {
+        const selectedWallet = e.target.value;
+        if (selectedWallet) {
+            window.lastWalletSelected = selectedWallet;
+            if (onWalletChange) {
+                await onWalletChange(selectedWallet);
+            }
+        }
+    });
+    return eventManager;
+}
+
 export { 
     createNoDataMessage,
     setupWalletDropdown,
     setupImageToggle,
-    setupResponsiveCanvas
+    setupResponsiveCanvas,
+    setupWalletChangeHandler
 };
