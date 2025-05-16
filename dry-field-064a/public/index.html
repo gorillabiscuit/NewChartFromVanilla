@@ -116,6 +116,7 @@
     import { animate } from './animation.js';
     import { state, clearChart } from './state.js';
     import { logOverlapStats } from './debug.js';
+    import { setupMouseInteraction } from './interaction.js';
     // --- DOM and Canvas Setup ---
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -216,7 +217,12 @@
                 clearChart,
                 (bubbles) => findClusters(bubbles, clusters, singleBubbles, bubblesOverlap, VELOCITY_POWER, BASE_VELOCITY),
                 (loan, ...bubbleArgs) => createLoanBubbleFromAPI(loan, ...bubbleArgs),
-                (min, max) => { PADDED_MIN_DATE = min; PADDED_MAX_DATE = max; },
+                (min, max) => { 
+                    PADDED_MIN_DATE = min; 
+                    PADDED_MAX_DATE = max;
+                    state.paddedMinDate = min;
+                    state.paddedMaxDate = max;
+                },
                 MIN_PADDING_PERCENT,
                 MAX_PADDING_PERCENT,
                 CHART_PADDING_X,
@@ -244,52 +250,7 @@
     });
 
     // --- Mouse Handling ---
-    const canvasEventManager = new EventManager(canvas);
-    canvasEventManager.on('mouseout', () => {
-        tooltip.style.visibility = 'hidden';
-    });
-    canvasEventManager.on('mousemove', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        window.mouseX = e.clientX - rect.left;
-        window.mouseY = e.clientY - rect.top;
-
-        for (const cluster of clusters) {
-            let hovering = false;
-            for (const b of cluster.bubbles) {
-                const dx = window.mouseX - b.x;
-                const dy = window.mouseY - b.y;
-                const dist = Math.hypot(dx, dy);
-                if (dist < b.r) {
-                    hovering = true;
-                    break;
-                }
-            }
-
-            if (hovering) {
-                cluster.hovering = true;
-                if (cluster.state === "idle") {
-                    cluster.state = "expanding";
-                    applyOutwardForce(cluster, WIDTH, HEIGHT);
-                    cluster.frameCount = 0;
-                }
-                if (cluster.revertTimer) {
-                    clearTimeout(cluster.revertTimer);
-                    cluster.revertTimer = null;
-                }
-            } else {
-                if (cluster.hovering) {
-                    cluster.hovering = false;
-                    if (!cluster.revertTimer) {
-                        cluster.revertTimer = setTimeout(() => {
-                            if (!cluster.hovering) {
-                                cluster.state = "reverting";
-                            }
-                        }, REVERT_DELAY);
-                    }
-                }
-            }
-        }
-    });
+    const canvasEventManager = setupMouseInteraction(canvas, clusters, tooltip, WIDTH, HEIGHT);
 
     // --- Animation loop ---
     animate(
@@ -317,7 +278,12 @@
                     clearChart,
                     (bubbles) => findClusters(bubbles, clusters, singleBubbles, bubblesOverlap, VELOCITY_POWER, BASE_VELOCITY),
                     (loan, ...bubbleArgs) => createLoanBubbleFromAPI(loan, ...bubbleArgs),
-                    (min, max) => { PADDED_MIN_DATE = min; PADDED_MAX_DATE = max; },
+                    (min, max) => { 
+                        PADDED_MIN_DATE = min; 
+                        PADDED_MAX_DATE = max;
+                        state.paddedMinDate = min;
+                        state.paddedMaxDate = max;
+                    },
                     MIN_PADDING_PERCENT,
                     MAX_PADDING_PERCENT,
                     CHART_PADDING_X,

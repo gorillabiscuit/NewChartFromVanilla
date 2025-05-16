@@ -3,7 +3,7 @@ import { packClusterBubbles, animateClusterToPacked } from './clusterLayout.js';
 import { revertClusterSmoothly } from './physics.js';
 import { draw } from './renderUtils.js';
 import { updateTooltip } from './uiComponents.js';
-import state from './state.js';
+import { state } from './state.js';
 
 /**
  * Main animation loop that handles cluster animations and rendering
@@ -35,7 +35,7 @@ function animate(ctx, tooltip, canvas, clusters, singleBubbles, allBubbles, show
             }
         }
         draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, state.showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
-        updateTooltip(tooltip, window.mouseX, window.mouseY, singleBubbles, clusters, canvas, allBubbles);
+        updateTooltip(tooltip, state.mousePosition.x, state.mousePosition.y, singleBubbles, clusters, canvas, allBubbles);
         requestAnimationFrame(loop);
     }
     loop();

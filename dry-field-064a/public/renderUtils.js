@@ -1,3 +1,5 @@
+import { state } from './state.js';
+
 /**
  * D3-inspired time scale and tick generator
  * @param {number[]} domain
@@ -207,8 +209,8 @@ function draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_T
     ctx.fillRect(0, CHART_HEIGHT, WIDTH, HEIGHT - CHART_HEIGHT);
     ctx.fillRect(CHART_PADDING_X - TICK_LENGTH, CHART_PADDING_TOP, WIDTH - (CHART_PADDING_X - TICK_LENGTH), CHART_HEIGHT - CHART_PADDING_TOP);
     
-    // Draw axes
-    drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
+    // Draw axes using state's date range
+    drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, allBubbles, state.paddedMinDate, state.paddedMaxDate);
     
     // 1. Draw single bubbles and non-expanded clusters
     for (const b of singleBubbles) {
