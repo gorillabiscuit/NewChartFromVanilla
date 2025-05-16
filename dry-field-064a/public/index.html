@@ -117,6 +117,7 @@
     import { state, clearChart } from './state.js';
     import { logOverlapStats } from './debug.js';
     import { setupMouseInteraction } from './interaction.js';
+    import { setupWalletChangeHandler, loadInitialData } from './walletManager.js';
     // --- DOM and Canvas Setup ---
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -206,48 +207,31 @@
         draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, state.showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
     });
 
+    // Create config object for wallet manager
+    const chartConfig = {
+        ctx,
+        WIDTH,
+        HEIGHT,
+        CHART_HEIGHT,
+        CHART_PADDING_X,
+        CHART_PADDING_TOP,
+        MIN_PADDING_PERCENT,
+        MAX_PADDING_PERCENT,
+        BUBBLE_PADDING_FACTOR,
+        VELOCITY_POWER,
+        BASE_VELOCITY,
+        PROTOCOL_COLORS,
+        DEFAULT_PROTOCOL_COLOR,
+        PADDED_MIN_DATE,
+        PADDED_MAX_DATE,
+        bubblesOverlap
+    };
+
+    // Set up wallet change handler
+    setupWalletChangeHandler(walletSelect, allBubbles, clusters, singleBubbles, chartConfig, noDataMessage);
+
     // Trigger initial load with image handling
-    fetchLoanData(WALLETS[0]).then(data => {
-        if (data && data.data && data.data.length > 0) {
-            useLoanDataForBubbles(
-                data.data,
-                allBubbles,
-                clusters,
-                singleBubbles,
-                clearChart,
-                (bubbles) => findClusters(bubbles, clusters, singleBubbles, bubblesOverlap, VELOCITY_POWER, BASE_VELOCITY),
-                (loan, ...bubbleArgs) => createLoanBubbleFromAPI(loan, ...bubbleArgs),
-                (min, max) => { 
-                    PADDED_MIN_DATE = min; 
-                    PADDED_MAX_DATE = max;
-                    state.paddedMinDate = min;
-                    state.paddedMaxDate = max;
-                },
-                MIN_PADDING_PERCENT,
-                MAX_PADDING_PERCENT,
-                CHART_PADDING_X,
-                WIDTH,
-                CHART_PADDING_TOP,
-                CHART_HEIGHT,
-                BUBBLE_PADDING_FACTOR
-            );
-            
-            // Load bubble images with progress tracking
-            loadBubbleImages(allBubbles, 
-                (loaded, total) => {
-                    console.log(`${loaded}/${total} images loaded (${Math.round(loaded/total*100)}%)`);
-                },
-                (totalLoaded) => {
-                    console.log(`All ${totalLoaded} images loaded, redrawing chart`);
-                    if (state.showImages) {
-                        draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, state.showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
-                    }
-                }
-            );
-            
-            noDataMessage.style.display = 'none';
-        }
-    });
+    loadInitialData(WALLETS[0], allBubbles, clusters, singleBubbles, chartConfig, noDataMessage);
 
     // --- Mouse Handling ---
     const canvasEventManager = setupMouseInteraction(canvas, clusters, tooltip, WIDTH, HEIGHT);
@@ -256,61 +240,6 @@
     animate(
         ctx, tooltip, canvas, clusters, singleBubbles, allBubbles, state.showImages, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, PADDED_MIN_DATE, PADDED_MAX_DATE, draw, updateTooltip, packClusterBubbles, animateClusterToPacked, revertClusterSmoothly, MAX_FRAMES
     );
-
-    // Add wallet change event handler
-    const walletEventManager = new EventManager(walletSelect);
-    walletEventManager.on('change', async (e) => {
-        const selectedWallet = e.target.value;
-        if (selectedWallet) {
-            window.lastWalletSelected = selectedWallet; // Store the selected wallet
-            const data = await fetchLoanData(selectedWallet);
-            if (data && data.data && data.data.length > 0) {
-                // Clear existing data
-                allBubbles.length = 0;
-                clusters.length = 0;
-                singleBubbles.length = 0;
-                // Update with new data
-                useLoanDataForBubbles(
-                    data.data,
-                    allBubbles,
-                    clusters,
-                    singleBubbles,
-                    clearChart,
-                    (bubbles) => findClusters(bubbles, clusters, singleBubbles, bubblesOverlap, VELOCITY_POWER, BASE_VELOCITY),
-                    (loan, ...bubbleArgs) => createLoanBubbleFromAPI(loan, ...bubbleArgs),
-                    (min, max) => { 
-                        PADDED_MIN_DATE = min; 
-                        PADDED_MAX_DATE = max;
-                        state.paddedMinDate = min;
-                        state.paddedMaxDate = max;
-                    },
-                    MIN_PADDING_PERCENT,
-                    MAX_PADDING_PERCENT,
-                    CHART_PADDING_X,
-                    WIDTH,
-                    CHART_PADDING_TOP,
-                    CHART_HEIGHT,
-                    BUBBLE_PADDING_FACTOR
-                );
-                // Load images for the new bubbles
-                loadBubbleImages(allBubbles, 
-                    (loaded, total) => {
-                        console.log(`${loaded}/${total} images loaded (${Math.round(loaded/total*100)}%)`);
-                    },
-                    (totalLoaded) => {
-                        console.log(`All ${totalLoaded} images loaded, redrawing chart`);
-                        if (state.showImages) {
-                            draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, state.showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
-                        }
-                    }
-                );
-                noDataMessage.style.display = 'none';
-            } else {
-                clearChart();
-                console.warn('API response: no loans', data);
-            }
-        }
-    });
     </script>
 </body>
 </html> 
