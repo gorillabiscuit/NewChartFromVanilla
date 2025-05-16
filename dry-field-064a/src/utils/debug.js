@@ -1,7 +1,8 @@
-import { getBubbleOverlap } from './bubbleUtils.js';
+import { getBubbleOverlap } from '../data/bubbleUtils.js';
 
 /**
- * Log statistics about bubble overlaps for debugging
+ * Purpose: Debugging utilities for development and troubleshooting.
+ * Boundaries: Pure functions only. No state mutation or DOM manipulation.
  * @param {Array} allBubbles - Array of all bubbles
  */
 function logOverlapStats(allBubbles) {

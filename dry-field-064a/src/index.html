@@ -103,21 +103,21 @@
         </div>
     </div>
     <script type="module">
-    import { createLoanBubbleFromAPI, useLoanDataForBubbles, findClusters, getPercentile } from './clusterUtils.js';
-    import { getBubbleOverlap, bubblesOverlap } from './bubbleUtils.js';
-    import { applyOutwardForce, revertClusterSmoothly } from './physics.js';
-    import { MAX_FRAMES, REVERT_DELAY } from './constants.js';
-    import { drawAxes, draw, timeScale, niceDateTicks, niceLinearTicks, TICK_LENGTH, TICK_PADDING, DATE_TICK_COUNT } from './renderUtils.js';
-    import { updateTooltip, initializeTooltip, setupTooltipStyles } from './uiComponents.js';
-    import { fetchLoanData, loadBubbleImages } from './dataService.js';
-    import { packClusterBubbles, animateClusterToPacked, updateClusterAnimation } from './clusterLayout.js';
-    import { createNoDataMessage, setupWalletDropdown, setupImageToggle, setupResponsiveCanvas } from './uiManager.js';
+    import { createLoanBubbleFromAPI, useLoanDataForBubbles, findClusters, getPercentile } from './data/clusterUtils.js';
+    import { getBubbleOverlap, bubblesOverlap } from './data/bubbleUtils.js';
+    import { applyOutwardForce, revertClusterSmoothly } from './utils/physics.js';
+    import { MAX_FRAMES, REVERT_DELAY } from './config/constants.js';
+    import { drawAxes, draw, timeScale, niceDateTicks, niceLinearTicks, TICK_LENGTH, TICK_PADDING, DATE_TICK_COUNT } from './utils/renderUtils.js';
+    import { updateTooltip, initializeTooltip, setupTooltipStyles } from './ui/uiComponents.js';
+    import { fetchLoanData, loadBubbleImages } from './data/dataService.js';
+    import { packClusterBubbles, animateClusterToPacked, updateClusterAnimation } from './utils/clusterLayout.js';
+    import { createNoDataMessage, setupWalletDropdown, setupImageToggle, setupResponsiveCanvas } from './ui/uiManager.js';
     import EventManager from './event/EventManager.js';
     import { animate } from './animation.js';
-    import { state, clearChart } from './state.js';
-    import { logOverlapStats } from './debug.js';
+    import { state, clearChart } from './state/state.js';
+    import { logOverlapStats } from './utils/debug.js';
     import { setupMouseInteraction } from './interaction.js';
-    import { setupWalletChangeHandler, loadInitialData } from './walletManager.js';
+    import { setupWalletChangeHandler, loadInitialData } from './events/walletManager.js';
     // --- DOM and Canvas Setup ---
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');

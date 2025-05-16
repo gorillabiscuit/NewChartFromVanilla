@@ -1,13 +1,14 @@
-import { fetchLoanData } from './dataService.js';
-import { useLoanDataForBubbles } from './clusterUtils.js';
-import { findClusters, createLoanBubbleFromAPI } from './clusterUtils.js';
-import { loadBubbleImages } from './dataService.js';
-import { draw } from './renderUtils.js';
-import { state, clearChart } from './state.js';
-import EventManager from './event/EventManager.js';
+import { fetchLoanData } from '../data/dataService.js';
+import { useLoanDataForBubbles } from '../data/clusterUtils.js';
+import { findClusters, createLoanBubbleFromAPI } from '../data/clusterUtils.js';
+import { loadBubbleImages } from '../data/dataService.js';
+import { draw } from '../utils/renderUtils.js';
+import { state, clearChart } from '../state/state.js';
+import EventManager from '../event/EventManager.js';
 
 /**
- * Sets up wallet change event handling
+ * Purpose: Handles wallet selection events and related state updates.
+ * Boundaries: Only manages wallet events and state. No direct data fetching or DOM manipulation outside event handling.
  * @param {HTMLSelectElement} walletSelect - The wallet select dropdown element
  * @param {Array} allBubbles - Array to store all bubbles
  * @param {Array} clusters - Array to store bubble clusters

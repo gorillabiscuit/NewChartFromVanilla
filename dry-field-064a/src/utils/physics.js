@@ -1,10 +1,14 @@
+/**
+ * Purpose: Physics utilities for bubble movement and cluster interactions.
+ * Boundaries: Pure functions only. No state mutation or DOM manipulation.
+ */
 import {
   BASE_REPULSION, REPULSION_POWER, REPULSION_CLUSTER_CAP, OUTWARD_FORCE, OUTWARD_FORCE_DIVISOR,
   OUTWARD_FORCE_POWER, OUTWARD_CLUSTER_CAP, SPRING_CONSTANT, CLUSTER_SCALE_DIVISOR, OVERLAP_SCALE,
   OVERLAP_FORCE_MULTIPLIER, BASE_VELOCITY, VELOCITY_POWER, MAX_FRAMES, REVERT_DELAY, REVERT_SPEED,
   BASE_DAMPING, EXTRA_DAMPING, DAMPING_CLUSTER_THRESHOLD
-} from './constants.js';
-import { getBubbleOverlap } from './bubbleUtils.js';
+} from '../config/constants.js';
+import { getBubbleOverlap } from '../data/bubbleUtils.js';
 
 // --- Physics Functions ---
 /**

@@ -1,4 +1,9 @@
 /**
+ * Purpose: Utilities for calculating and animating cluster layouts in the chart.
+ * Boundaries: Pure functions only. No state mutation or DOM manipulation.
+ */
+
+/**
  * ClusterLayout Module - Handles D3-based circle packing for expanding clusters
  */
 

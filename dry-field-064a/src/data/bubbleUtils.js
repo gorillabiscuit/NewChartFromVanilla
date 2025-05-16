@@ -1,4 +1,9 @@
 /**
+ * Purpose: Utility functions for bubble calculations and overlap detection.
+ * Boundaries: Pure functions only. No state mutation or DOM manipulation.
+ */
+
+/**
  * Calculates the overlap between two bubbles.
  * @param {Object} b1
  * @param {Object} b2

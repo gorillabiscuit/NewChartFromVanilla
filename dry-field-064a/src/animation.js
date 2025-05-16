@@ -1,12 +1,13 @@
-import { MAX_FRAMES } from './constants.js';
-import { packClusterBubbles, animateClusterToPacked } from './clusterLayout.js';
-import { revertClusterSmoothly } from './physics.js';
-import { draw } from './renderUtils.js';
-import { updateTooltip } from './uiComponents.js';
-import { state } from './state.js';
+import { MAX_FRAMES } from './config/constants.js';
+import { packClusterBubbles, animateClusterToPacked } from './utils/clusterLayout.js';
+import { revertClusterSmoothly } from './utils/physics.js';
+import { draw } from './utils/renderUtils.js';
+import { updateTooltip } from './ui/uiComponents.js';
+import { state } from './state/state.js';
 
 /**
- * Main animation loop that handles cluster animations and rendering
+ * Purpose: Handles the main animation loop and cluster animations for the chart.
+ * Boundaries: Coordinates rendering and animation. No direct data fetching or UI event handling.
  * @param {CanvasRenderingContext2D} ctx - The canvas rendering context
  * @param {HTMLElement} tooltip - The tooltip element
  * @param {HTMLCanvasElement} canvas - The canvas element

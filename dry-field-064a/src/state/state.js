@@ -1,3 +1,7 @@
+/**
+ * Purpose: Centralized state management for the application.
+ * Boundaries: Holds all mutable app state. No direct DOM manipulation or data fetching.
+ */
 // Global state container
 const state = {
     // Bubble collections

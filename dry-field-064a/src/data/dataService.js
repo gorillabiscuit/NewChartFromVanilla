@@ -1,4 +1,9 @@
 /**
+ * Purpose: Provides functions for fetching and adapting blockchain data for the app.
+ * Boundaries: Only fetches and adapts data. No state mutation or DOM manipulation.
+ */
+
+/**
  * Data Service Module - Handles API calls and data fetching
  */
 

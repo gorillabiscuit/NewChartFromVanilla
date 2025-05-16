@@ -1,8 +1,9 @@
 /**
- * UI Manager Module - Handles UI creation and management
+ * Purpose: Manages UI creation, updates, and user interactions.
+ * Boundaries: Only handles DOM manipulation and UI logic. No direct state mutation or data fetching.
  */
 
-import EventManager from './event/EventManager.js';
+import EventManager from '../event/EventManager.js';
 
 /**
  * Creates a no data message element

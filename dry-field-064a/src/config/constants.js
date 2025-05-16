@@ -1,3 +1,7 @@
+/**
+ * Purpose: Application-wide constants and feature flags.
+ * Boundaries: Only exports static configuration. No logic, state, or DOM manipulation.
+ */
 export const BASE_REPULSION = 0.008;
 export const REPULSION_POWER = 0.5;
 export const REPULSION_CLUSTER_CAP = 6;

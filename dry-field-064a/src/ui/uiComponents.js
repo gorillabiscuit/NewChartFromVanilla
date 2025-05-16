@@ -1,5 +1,6 @@
 /**
- * UI Components Module - Handles tooltip and UI-related functionality
+ * Purpose: Provides reusable UI components and tooltip logic for the chart.
+ * Boundaries: Only handles DOM manipulation and UI rendering. No direct state mutation or data fetching.
  */
 
 /**

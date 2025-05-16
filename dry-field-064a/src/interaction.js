@@ -1,7 +1,12 @@
-import { REVERT_DELAY } from './constants.js';
-import { applyOutwardForce } from './physics.js';
-import { updateMousePosition } from './state.js';
+import { REVERT_DELAY } from './config/constants.js';
+import { applyOutwardForce } from './utils/physics.js';
+import { updateMousePosition } from './state/state.js';
 import EventManager from './event/EventManager.js';
+
+/**
+ * Purpose: Handles mouse and user interactions with the chart canvas.
+ * Boundaries: Only manages event listeners and interaction logic. No direct state mutation outside of event handling.
+ */
 
 /**
  * Calculate mouse position relative to canvas, accounting for scaling

@@ -1,6 +1,11 @@
 import { bubblesOverlap } from './bubbleUtils.js';
 
 /**
+ * Purpose: Provides functions for transforming and clustering blockchain loan data for visualization.
+ * Boundaries: Only transforms data. No state mutation or DOM manipulation.
+ */
+
+/**
  * Calculates the overlap between two bubbles.
  * @param {Object} b1
  * @param {Object} b2

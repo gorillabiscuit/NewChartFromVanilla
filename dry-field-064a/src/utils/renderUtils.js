@@ -1,4 +1,9 @@
-import { state } from './state.js';
+import { state } from '../state/state.js';
+
+/**
+ * Purpose: Rendering utilities for drawing chart axes, bubbles, and grid lines.
+ * Boundaries: Only handles canvas drawing. No state mutation or data fetching.
+ */
 
 /**
  * D3-inspired time scale and tick generator
