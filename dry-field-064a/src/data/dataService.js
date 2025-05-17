@@ -1,6 +1,23 @@
 /**
- * Purpose: Provides functions for fetching and adapting blockchain data for the app.
- * Boundaries: Only fetches and adapts data. No state mutation or DOM manipulation.
+ * @fileoverview Data fetching and transformation service for blockchain data.
+ * 
+ * Module Boundaries:
+ * - This module is responsible for all data fetching and transformation
+ * - All blockchain data access MUST go through this module
+ * - Data transformations should be pure functions
+ * - No direct state mutations or UI updates
+ * 
+ * Allowed Dependencies:
+ * - /state/* - For dispatching state updates
+ * - /events/* - For data-related events
+ * - /utils/* - For pure utility functions
+ * 
+ * Forbidden:
+ * - Direct DOM manipulation
+ * - Window assignments
+ * - Global variables
+ * - Direct state mutations
+ * - UI updates
  */
 
 /**

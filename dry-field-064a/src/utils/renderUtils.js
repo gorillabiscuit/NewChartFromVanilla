@@ -1,3 +1,24 @@
+/**
+ * @fileoverview Pure rendering utility functions for canvas operations.
+ * 
+ * Module Boundaries:
+ * - This module contains pure functions for canvas rendering
+ * - All functions should be side-effect free
+ * - No state mutations or UI updates
+ * - No direct DOM manipulation outside canvas context
+ * 
+ * Allowed Dependencies:
+ * - /utils/* - For pure utility functions
+ * 
+ * Forbidden:
+ * - Direct state mutations
+ * - Direct DOM manipulation (except canvas context)
+ * - Window assignments
+ * - Global variables
+ * - Data fetching
+ * - UI updates (except canvas drawing)
+ */
+
 import { state } from '../state/state.js';
 
 /**

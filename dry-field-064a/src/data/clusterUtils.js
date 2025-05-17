@@ -1,3 +1,24 @@
+/**
+ * @fileoverview Pure utility functions for bubble clustering and data processing.
+ * 
+ * Module Boundaries:
+ * - This module contains pure functions for data processing
+ * - All functions should be side-effect free
+ * - No state mutations or UI updates
+ * - No direct data fetching
+ * 
+ * Allowed Dependencies:
+ * - /utils/* - For pure utility functions
+ * 
+ * Forbidden:
+ * - Direct state mutations
+ * - Direct DOM manipulation
+ * - Window assignments
+ * - Global variables
+ * - Data fetching
+ * - UI updates
+ */
+
 import { bubblesOverlap } from './bubbleUtils.js';
 
 /**
