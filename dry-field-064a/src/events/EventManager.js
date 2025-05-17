@@ -1,3 +1,23 @@
+/**
+ * @fileoverview Event bus system for cross-module communication.
+ * 
+ * Module Boundaries:
+ * - This module is the single source of truth for event handling
+ * - All cross-module communication MUST go through this module
+ * - Direct function calls between modules are forbidden
+ * - Event handlers should be pure functions
+ * 
+ * Allowed Dependencies:
+ * - /utils/* - For pure utility functions
+ * 
+ * Forbidden:
+ * - Direct state mutations
+ * - Direct DOM manipulation
+ * - Window assignments
+ * - Global variables
+ * - Direct function calls between modules
+ */
+
 // dry-field-064a/src/event/EventManager.js
 
 class EventManager {

@@ -1,6 +1,6 @@
 import { REVERT_DELAY } from './config/constants.js';
 import { applyOutwardForce } from './utils/physics.js';
-import { updateMousePosition } from './state/state.js';
+import { dispatch, getState } from './state/state.js';
 import EventManager from './event/EventManager.js';
 
 /**
@@ -33,7 +33,8 @@ function calculateMousePosition(event, canvas) {
  * @param {number} height - Canvas height
  */
 function handleClusterInteractions(clusters, mousePos, width, height) {
-    for (const cluster of clusters) {
+    let clusterStatesChanged = false;
+    const updatedClusters = clusters.map(cluster => {
         let hovering = false;
         for (const b of cluster.bubbles) {
             const dx = mousePos.x - b.x;
@@ -45,29 +46,48 @@ function handleClusterInteractions(clusters, mousePos, width, height) {
             }
         }
 
+        const updatedCluster = { ...cluster };
         if (hovering) {
-            cluster.hovering = true;
-            if (cluster.state === "idle") {
-                cluster.state = "expanding";
-                applyOutwardForce(cluster, width, height);
-                cluster.frameCount = 0;
-            }
-            if (cluster.revertTimer) {
-                clearTimeout(cluster.revertTimer);
-                cluster.revertTimer = null;
+            if (!cluster.hovering) {
+                updatedCluster.hovering = true;
+                if (cluster.state === "idle") {
+                    updatedCluster.state = "expanding";
+                    applyOutwardForce(updatedCluster, width, height);
+                    updatedCluster.frameCount = 0;
+                }
+                if (cluster.revertTimer) {
+                    clearTimeout(cluster.revertTimer);
+                    updatedCluster.revertTimer = null;
+                }
+                clusterStatesChanged = true;
             }
         } else {
             if (cluster.hovering) {
-                cluster.hovering = false;
+                updatedCluster.hovering = false;
                 if (!cluster.revertTimer) {
-                    cluster.revertTimer = setTimeout(() => {
-                        if (!cluster.hovering) {
-                            cluster.state = "reverting";
+                    updatedCluster.revertTimer = setTimeout(() => {
+                        if (!updatedCluster.hovering) {
+                            dispatch({ 
+                                type: 'UPDATE_CLUSTER_STATE', 
+                                payload: { 
+                                    clusterId: updatedCluster.id, 
+                                    state: "reverting" 
+                                }
+                            });
                         }
                     }, REVERT_DELAY);
                 }
+                clusterStatesChanged = true;
             }
         }
+        return updatedCluster;
+    });
+
+    if (clusterStatesChanged) {
+        dispatch({ 
+            type: 'UPDATE_CLUSTERS', 
+            payload: updatedClusters 
+        });
     }
 }
 
@@ -86,13 +106,24 @@ function setupMouseInteraction(canvas, clusters, tooltip, width, height) {
     // Handle mouseout
     eventManager.on('mouseout', () => {
         tooltip.style.visibility = 'hidden';
+        dispatch({ 
+            type: 'SET_MOUSE_POSITION', 
+            payload: { x: -1, y: -1 } 
+        });
     });
 
     // Handle mousemove
     eventManager.on('mousemove', (e) => {
         const mousePos = calculateMousePosition(e, canvas);
-        updateMousePosition(mousePos.x, mousePos.y);
-        handleClusterInteractions(clusters, mousePos, width, height);
+        dispatch({ 
+            type: 'SET_MOUSE_POSITION', 
+            payload: { x: mousePos.x, y: mousePos.y } 
+        });
+        console.log('Mouse moved:', mousePos);
+        // Always use the latest clusters from state
+        const latestClusters = getState().clusters;
+        console.log('Latest clusters:', latestClusters);
+        handleClusterInteractions(latestClusters, mousePos, width, height);
     });
 
     return eventManager;

@@ -3,8 +3,9 @@ import { useLoanDataForBubbles } from '../data/clusterUtils.js';
 import { findClusters, createLoanBubbleFromAPI } from '../data/clusterUtils.js';
 import { loadBubbleImages } from '../data/dataService.js';
 import { draw } from '../utils/renderUtils.js';
-import { state, clearChart } from '../state/state.js';
+import { state, clearChart, dispatch, getState, subscribe } from '../state/state.js';
 import EventManager from '../event/EventManager.js';
+import { ChartController } from '../controllers/ChartController.js';
 
 /**
  * Purpose: Handles wallet selection events and related state updates.
@@ -26,75 +27,20 @@ export function setupWalletChangeHandler(
     noDataMessage
 ) {
     const walletEventManager = new EventManager(walletSelect);
+    const chartController = new ChartController(config.ctx, config.canvas, config.tooltip, {
+        ...config,
+        findClusters,
+        createLoanBubbleFromAPI,
+        packClusterBubbles: config.packClusterBubbles,
+        animateClusterToPacked: config.animateClusterToPacked,
+        revertClusterSmoothly: config.revertClusterSmoothly,
+        MAX_FRAMES: config.MAX_FRAMES
+    });
     
     walletEventManager.on('change', async (e) => {
         const selectedWallet = e.target.value;
         if (selectedWallet) {
-            window.lastWalletSelected = selectedWallet;
-            const data = await fetchLoanData(selectedWallet);
-            
-            if (data && data.data && data.data.length > 0) {
-                // Clear existing data
-                allBubbles.length = 0;
-                clusters.length = 0;
-                singleBubbles.length = 0;
-                
-                // Update with new data
-                useLoanDataForBubbles(
-                    data.data,
-                    allBubbles,
-                    clusters,
-                    singleBubbles,
-                    clearChart,
-                    (bubbles) => findClusters(bubbles, clusters, singleBubbles, config.bubblesOverlap, config.VELOCITY_POWER, config.BASE_VELOCITY),
-                    (loan, ...bubbleArgs) => createLoanBubbleFromAPI(loan, ...bubbleArgs),
-                    (min, max) => { 
-                        config.PADDED_MIN_DATE = min; 
-                        config.PADDED_MAX_DATE = max;
-                        state.paddedMinDate = min;
-                        state.paddedMaxDate = max;
-                    },
-                    config.MIN_PADDING_PERCENT,
-                    config.MAX_PADDING_PERCENT,
-                    config.CHART_PADDING_X,
-                    config.WIDTH,
-                    config.CHART_PADDING_TOP,
-                    config.CHART_HEIGHT,
-                    config.BUBBLE_PADDING_FACTOR
-                );
-                
-                // Load images for the new bubbles
-                loadBubbleImages(allBubbles, 
-                    (loaded, total) => {
-                        console.log(`${loaded}/${total} images loaded (${Math.round(loaded/total*100)}%)`);
-                    },
-                    (totalLoaded) => {
-                        console.log(`All ${totalLoaded} images loaded, redrawing chart`);
-                        if (state.showImages) {
-                            draw(
-                                config.ctx,
-                                config.WIDTH,
-                                config.HEIGHT,
-                                config.CHART_HEIGHT,
-                                config.CHART_PADDING_X,
-                                config.CHART_PADDING_TOP,
-                                singleBubbles,
-                                clusters,
-                                state.showImages,
-                                config.PROTOCOL_COLORS,
-                                config.DEFAULT_PROTOCOL_COLOR,
-                                allBubbles,
-                                config.PADDED_MIN_DATE,
-                                config.PADDED_MAX_DATE
-                            );
-                        }
-                    }
-                );
-                noDataMessage.style.display = 'none';
-            } else {
-                clearChart();
-                console.warn('API response: no loans', data);
-            }
+            await chartController.changeWallet(selectedWallet);
         }
     });
 
@@ -111,60 +57,65 @@ export function setupWalletChangeHandler(
  * @param {HTMLElement} noDataMessage - Element to show/hide when no data is available
  */
 export function loadInitialData(initialWallet, allBubbles, clusters, singleBubbles, config, noDataMessage) {
-    fetchLoanData(initialWallet).then(data => {
-        if (data && data.data && data.data.length > 0) {
-            useLoanDataForBubbles(
-                data.data,
-                allBubbles,
-                clusters,
-                singleBubbles,
-                clearChart,
-                (bubbles) => findClusters(bubbles, clusters, singleBubbles, config.bubblesOverlap, config.VELOCITY_POWER, config.BASE_VELOCITY),
-                (loan, ...bubbleArgs) => createLoanBubbleFromAPI(loan, ...bubbleArgs),
-                (min, max) => { 
-                    config.PADDED_MIN_DATE = min; 
-                    config.PADDED_MAX_DATE = max;
-                    state.paddedMinDate = min;
-                    state.paddedMaxDate = max;
-                },
-                config.MIN_PADDING_PERCENT,
-                config.MAX_PADDING_PERCENT,
-                config.CHART_PADDING_X,
-                config.WIDTH,
-                config.CHART_PADDING_TOP,
-                config.CHART_HEIGHT,
-                config.BUBBLE_PADDING_FACTOR
-            );
-            
-            // Load bubble images with progress tracking
-            loadBubbleImages(allBubbles, 
-                (loaded, total) => {
-                    console.log(`${loaded}/${total} images loaded (${Math.round(loaded/total*100)}%)`);
-                },
-                (totalLoaded) => {
-                    console.log(`All ${totalLoaded} images loaded, redrawing chart`);
-                    if (state.showImages) {
-                        draw(
-                            config.ctx,
-                            config.WIDTH,
-                            config.HEIGHT,
-                            config.CHART_HEIGHT,
-                            config.CHART_PADDING_X,
-                            config.CHART_PADDING_TOP,
-                            singleBubbles,
-                            clusters,
-                            state.showImages,
-                            config.PROTOCOL_COLORS,
-                            config.DEFAULT_PROTOCOL_COLOR,
-                            allBubbles,
-                            config.PADDED_MIN_DATE,
-                            config.PADDED_MAX_DATE
-                        );
-                    }
-                }
-            );
-            
-            noDataMessage.style.display = 'none';
-        }
+    const chartController = new ChartController(config.ctx, config.canvas, config.tooltip, {
+        ...config,
+        findClusters,
+        createLoanBubbleFromAPI,
+        packClusterBubbles: config.packClusterBubbles,
+        animateClusterToPacked: config.animateClusterToPacked,
+        revertClusterSmoothly: config.revertClusterSmoothly,
+        MAX_FRAMES: config.MAX_FRAMES
     });
-} 
+    
+    chartController.changeWallet(initialWallet);
+}
+
+// Helper to log image loading triggers
+function logImageLoadTrigger(context) {
+    const s = getState();
+    console.log(`[IMAGE LOAD TRIGGER] ${context} | wallet: ${s.currentWallet}, generation: ${s.imageLoadGeneration}, showImages: ${s.showImages}, status: ${s.status}`);
+}
+
+function maybeLoadImagesForCurrentState() {
+    const currentState = getState();
+    if (!currentState.showImages || currentState.status !== 'ready') return;
+    const bubbles = currentState.allBubbles;
+    const generation = currentState.imageLoadGeneration;
+    console.trace('[IMAGE LOAD TRIGGER] maybeLoadImagesForCurrentState', {
+        wallet: currentState.currentWallet,
+        generation,
+        showImages: currentState.showImages,
+        status: currentState.status
+    });
+    loadBubbleImages(bubbles,
+        (loaded, total) => {
+            // Only update if generation matches
+            if (getState().imageLoadGeneration !== generation) return;
+            // Optionally, update progress in state/UI here
+        },
+        (totalLoaded) => {
+            if (getState().imageLoadGeneration !== generation) return;
+            // Optionally, update state/UI to indicate images are loaded
+            // No-op for now
+        }
+    );
+}
+
+// Subscribe to showImages and status changes to trigger image loading only on correct transition
+let prevShowImages = getState().showImages;
+subscribe((newState) => {
+    if (!prevShowImages && newState.showImages && newState.status === 'ready') {
+        console.trace('[IMAGE LOAD TRIGGER] showImages toggled ON', {
+            wallet: newState.currentWallet,
+            generation: newState.imageLoadGeneration,
+            showImages: newState.showImages,
+            status: newState.status
+        });
+        maybeLoadImagesForCurrentState();
+    }
+    // Log when chart is hidden
+    if (newState.status !== 'ready') {
+        console.trace('[UI] Chart hidden due to status', newState.status, newState);
+    }
+    prevShowImages = newState.showImages;
+}); 

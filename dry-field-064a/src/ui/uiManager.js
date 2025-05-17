@@ -4,6 +4,7 @@
  */
 
 import EventManager from '../event/EventManager.js';
+import { dispatch, getState } from '../state/state.js';
 
 /**
  * Creates a no data message element
@@ -57,30 +58,21 @@ function setupWalletDropdown(walletSelect, wallets) {
     
     // Set default wallet (first in the list)
     walletSelect.value = wallets[0];
-    window.lastWalletSelected = wallets[0]; // Initialize the last selected wallet
+    dispatch({ type: 'SET_CURRENT_WALLET', payload: wallets[0] });
 }
 
 /**
  * Setup the image toggle button's event listener
  * 
  * @param {HTMLElement} imageToggle - The image toggle button
- * @param {Function} onToggle - Callback when toggle is clicked
  */
-function setupImageToggle(imageToggle, onToggle) {
+function setupImageToggle(imageToggle) {
     console.log('Setting up image toggle');
     const eventManager = new EventManager(imageToggle);
     eventManager.on('click', () => {
         const newState = !imageToggle.classList.contains('active');
-        console.log('Image toggle clicked:', {
-            newState,
-            buttonText: newState ? 'Hide Images' : 'Show Images'
-        });
-        imageToggle.textContent = newState ? 'Hide Images' : 'Show Images';
-        imageToggle.classList.toggle('active', newState);
-        if (onToggle) {
-            console.log('Calling onToggle with state:', newState);
-            onToggle(newState);
-        }
+        dispatch({ type: 'TOGGLE_IMAGES', payload: newState });
+        imageToggle.classList.toggle('active');
     });
 }
 
@@ -144,7 +136,7 @@ function setupWalletChangeHandler(walletSelect, onWalletChange) {
     eventManager.on('change', async (e) => {
         const selectedWallet = e.target.value;
         if (selectedWallet) {
-            window.lastWalletSelected = selectedWallet;
+            dispatch({ type: 'SET_CURRENT_WALLET', payload: selectedWallet });
             if (onWalletChange) {
                 await onWalletChange(selectedWallet);
             }

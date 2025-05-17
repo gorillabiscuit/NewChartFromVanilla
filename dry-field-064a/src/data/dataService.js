@@ -58,9 +58,7 @@ function loadBubbleImages(bubbles, onProgress, onComplete) {
             };
             
             bubble.img.onerror = (e) => {
-                console.error(`Failed to load image for ${bubble.name}: ${bubble.imageUrl}`, e);
                 if (bubble.imageUrl.includes('reservoir.tools') && bubble.nftAddress && bubble.nftId) {
-                    console.log('Attempting direct NFT image loading for', bubble.name);
                     const fallbackUrl = `https://nfts.reservoir.tools/token/ethereum/${bubble.nftAddress}:${bubble.nftId}/image/v1`;
                     bubble.img.src = fallbackUrl;
                 } else {

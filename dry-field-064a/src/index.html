@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Loan Bubble Graph - Corrected with Dense Overlaps</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💸</text></svg>">
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body {
@@ -96,7 +97,9 @@
         <option value="">Select a wallet...</option>
     </select>
     <button id="imageToggle" class="toggle-button">Show Images</button>
-    <div class="app">
+    <div id="loadingIndicator" style="display:none; margin: 20px; font-size: 18px; color: #D14D8A;">Loading...</div>
+    <div id="errorIndicator" style="display:none; margin: 20px; font-size: 18px; color: #ff4d4f;"></div>
+    <div class="app" id="appContainer">
         <div class="chart-wrapper">
             <canvas id="canvas"></canvas>
             <div id="tooltip"></div>
@@ -114,7 +117,7 @@
     import { createNoDataMessage, setupWalletDropdown, setupImageToggle, setupResponsiveCanvas } from './ui/uiManager.js';
     import EventManager from './event/EventManager.js';
     import { animate } from './animation.js';
-    import { state, clearChart } from './state/state.js';
+    import { state, clearChart, subscribe, dispatch } from './state/state.js';
     import { logOverlapStats } from './utils/debug.js';
     import { setupMouseInteraction } from './interaction.js';
     import { setupWalletChangeHandler, loadInitialData } from './events/walletManager.js';
@@ -190,10 +193,7 @@
     setupWalletDropdown(walletSelect, WALLETS);
 
     // Set up image toggle
-    setupImageToggle(imageToggle, (showImagesState) => {
-        state.showImages = showImagesState;
-        draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, state.showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
-    });
+    setupImageToggle(imageToggle);
 
     // Set up responsive canvas sizing
     setupResponsiveCanvas(canvas, ctx, (dimensions) => {
@@ -204,12 +204,25 @@
         CHART_PADDING_TOP = dimensions.chartPaddingTop;
         CHART_PADDING_BOTTOM = dimensions.chartPaddingBottom;
         
-        draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, state.showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
+        // Update state with new dimensions
+        dispatch({ 
+            type: 'SET_CANVAS_DIMENSIONS', 
+            payload: {
+                width: WIDTH,
+                height: HEIGHT,
+                chartHeight: CHART_HEIGHT,
+                chartPaddingX: CHART_PADDING_X,
+                chartPaddingTop: CHART_PADDING_TOP,
+                chartPaddingBottom: CHART_PADDING_BOTTOM
+            }
+        });
     });
 
     // Create config object for wallet manager
     const chartConfig = {
         ctx,
+        canvas,
+        tooltip,
         WIDTH,
         HEIGHT,
         CHART_HEIGHT,
@@ -224,7 +237,13 @@
         DEFAULT_PROTOCOL_COLOR,
         PADDED_MIN_DATE,
         PADDED_MAX_DATE,
-        bubblesOverlap
+        bubblesOverlap,
+        findClusters,
+        createLoanBubbleFromAPI,
+        packClusterBubbles,
+        animateClusterToPacked,
+        revertClusterSmoothly,
+        MAX_FRAMES
     };
 
     // Set up wallet change handler
@@ -236,10 +255,71 @@
     // --- Mouse Handling ---
     const canvasEventManager = setupMouseInteraction(canvas, clusters, tooltip, WIDTH, HEIGHT);
 
+    // Subscribe to state changes for UI updates
+    subscribe((newState) => {
+        // Update chart
+        draw(
+            ctx, 
+            newState.width || WIDTH, 
+            newState.height || HEIGHT, 
+            newState.chartHeight || CHART_HEIGHT, 
+            newState.chartPaddingX || CHART_PADDING_X, 
+            newState.chartPaddingTop || CHART_PADDING_TOP, 
+            newState.singleBubbles || singleBubbles, 
+            newState.clusters || clusters, 
+            newState.showImages, 
+            PROTOCOL_COLORS, 
+            DEFAULT_PROTOCOL_COLOR, 
+            newState.allBubbles || allBubbles, 
+            newState.paddedMinDate || PADDED_MIN_DATE, 
+            newState.paddedMaxDate || PADDED_MAX_DATE
+        );
+
+        // Update tooltip
+        updateTooltip(
+            tooltip, 
+            newState.mousePosition.x, 
+            newState.mousePosition.y, 
+            newState.singleBubbles || singleBubbles, 
+            newState.clusters || clusters, 
+            canvas, 
+            newState.allBubbles || allBubbles
+        );
+    });
+
     // --- Animation loop ---
     animate(
         ctx, tooltip, canvas, clusters, singleBubbles, allBubbles, state.showImages, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, PADDED_MIN_DATE, PADDED_MAX_DATE, draw, updateTooltip, packClusterBubbles, animateClusterToPacked, revertClusterSmoothly, MAX_FRAMES
     );
+
+    // Loading indicator
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const errorIndicator = document.getElementById('errorIndicator');
+    const appContainer = document.getElementById('appContainer');
+
+    // Subscribe to loading state
+    subscribe((newState) => {
+        if (loadingIndicator) {
+            loadingIndicator.style.display = newState.status === 'loading' ? 'block' : 'none';
+        }
+        if (errorIndicator) {
+            if (newState.status === 'error') {
+                errorIndicator.style.display = 'block';
+                errorIndicator.textContent = newState.error || 'An error occurred.';
+            } else {
+                errorIndicator.style.display = 'none';
+                errorIndicator.textContent = '';
+            }
+        }
+        if (appContainer) {
+            appContainer.style.display = newState.status === 'ready' ? 'block' : 'none';
+        }
+        // Optionally hide tooltip if not ready
+        const tooltip = document.getElementById('tooltip');
+        if (tooltip && newState.status !== 'ready') {
+            tooltip.style.visibility = 'hidden';
+        }
+    });
     </script>
 </body>
 </html> 

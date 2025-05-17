@@ -1,4 +1,25 @@
 /**
+ * @fileoverview UI components and DOM manipulation module.
+ * 
+ * Module Boundaries:
+ * - This module is responsible for all DOM manipulation
+ * - All UI updates MUST go through this module
+ * - Components should be pure functions of state
+ * - DOM queries are only allowed in this module
+ * 
+ * Allowed Dependencies:
+ * - /state/* - For reading application state
+ * - /events/* - For dispatching events
+ * - /utils/* - For pure utility functions
+ * 
+ * Forbidden:
+ * - Direct state mutations
+ * - Window assignments
+ * - Global variables
+ * - DOM manipulation outside this module
+ */
+
+/**
  * Purpose: Provides reusable UI components and tooltip logic for the chart.
  * Boundaries: Only handles DOM manipulation and UI rendering. No direct state mutation or data fetching.
  */

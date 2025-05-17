@@ -1,0 +1,66 @@
+{
+  "env": {
+    "browser": true,
+    "es2021": true
+  },
+  "extends": [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:import/recommended"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module"
+  },
+  "plugins": [
+    "@typescript-eslint",
+    "import"
+  ],
+  "rules": {
+    // Prevent global state pollution
+    "no-global-assign": "error",
+    "no-window": "error",
+    "no-restricted-globals": [
+      "error",
+      {
+        "name": "window",
+        "message": "Use the state manager instead of window assignments"
+      }
+    ],
+    
+    // Enforce module boundaries
+    "import/no-relative-parent-imports": "error",
+    "import/no-relative-packages": "error",
+    "import/no-cycle": "error",
+    
+    // Prevent direct DOM manipulation outside UI modules
+    "no-restricted-syntax": [
+      "error",
+      {
+        "selector": "CallExpression[callee.property.name='querySelector']:not([callee.object.name='document'])",
+        "message": "DOM queries should only be in UI modules"
+      },
+      {
+        "selector": "CallExpression[callee.property.name='querySelectorAll']:not([callee.object.name='document'])",
+        "message": "DOM queries should only be in UI modules"
+      }
+    ],
+    
+    // General best practices
+    "no-console": "warn",
+    "no-debugger": "warn",
+    "no-alert": "error",
+    "no-eval": "error",
+    "no-implied-eval": "error",
+    "no-unsafe-finally": "error",
+    "no-unsafe-optional-chaining": "error"
+  },
+  "settings": {
+    "import/resolver": {
+      "node": {
+        "extensions": [".js", ".jsx", ".ts", ".tsx"]
+      }
+    }
+  }
+} 
