@@ -208,17 +208,28 @@ function drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDI
 function draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE) {
     // Clear and setup background
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
+    
+    // Draw top margin (dark for top padding)
     ctx.fillStyle = '#221E37';
     ctx.fillRect(0, 0, WIDTH, CHART_PADDING_TOP);
+    
+    // Draw left margin (dark for y-axis labels)
+    ctx.fillStyle = '#221E37';
     ctx.fillRect(0, CHART_PADDING_TOP, CHART_PADDING_X, CHART_HEIGHT - CHART_PADDING_TOP);
+    
+    // Draw label area (dark)
+    ctx.fillStyle = '#221E37';
     ctx.fillRect(0, CHART_HEIGHT, WIDTH, HEIGHT - CHART_HEIGHT);
+    
+    // Draw plot area (dark), starting exactly at the y-axis line
+    ctx.fillStyle = '#221E37';
     ctx.fillRect(CHART_PADDING_X - TICK_LENGTH, CHART_PADDING_TOP, WIDTH - (CHART_PADDING_X - TICK_LENGTH), CHART_HEIGHT - CHART_PADDING_TOP);
     
-    // Draw axes using state's date range
-    drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, allBubbles, state.paddedMinDate, state.paddedMaxDate);
+    // Draw axes and bubbles
+    drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
     
-    // 1. Draw single bubbles and non-expanded clusters
-    for (const b of singleBubbles) {
+    // Draw ALL bubbles - both single and clustered
+    for (const b of allBubbles) {
         ctx.save();
         ctx.beginPath();
         ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
@@ -238,64 +249,6 @@ function draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_T
         ctx.beginPath();
         ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
         ctx.stroke();
-    }
-
-    // Draw non-expanded clusters
-    for (const cluster of clusters) {
-        if (cluster.state !== "expanded" && cluster.state !== "expanding") {
-            for (const b of cluster.bubbles) {
-                ctx.save();
-                ctx.beginPath();
-                ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-                ctx.closePath();
-                if (showImages && b.img && b.img.complete && b.img.naturalWidth > 0) {
-                    ctx.clip();
-                    ctx.drawImage(b.img, b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
-                } else {
-                    ctx.fillStyle = PROTOCOL_COLORS[b.protocol] || DEFAULT_PROTOCOL_COLOR;
-                    ctx.globalAlpha = 0.65;
-                    ctx.fill();
-                    ctx.globalAlpha = 1.0;
-                }
-                ctx.restore();
-                ctx.setLineDash([6, 6]);
-                ctx.beginPath();
-                ctx.arc(b.x, b.y, b.r + 2, 0, Math.PI * 2); // 2px offset for stroke
-                ctx.strokeStyle = 'rgba(255,255,255,0.75)'; // dashed white outline
-                ctx.lineWidth = 1;
-                ctx.stroke();
-                ctx.setLineDash([]);
-            }
-        }
-    }
-
-    // 2. Draw expanded (and expanding) clusters on top
-    for (const cluster of clusters) {
-        if (cluster.state === "expanded" || cluster.state === "expanding") {
-            for (const b of cluster.bubbles) {
-                ctx.save();
-                ctx.beginPath();
-                ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-                ctx.closePath();
-                if (showImages && b.img && b.img.complete && b.img.naturalWidth > 0) {
-                    ctx.clip();
-                    ctx.drawImage(b.img, b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
-                } else {
-                    ctx.fillStyle = PROTOCOL_COLORS[b.protocol] || DEFAULT_PROTOCOL_COLOR;
-                    ctx.globalAlpha = 0.65;
-                    ctx.fill();
-                    ctx.globalAlpha = 1.0;
-                }
-                ctx.restore();
-                ctx.setLineDash([6, 6]);
-                ctx.beginPath();
-                ctx.arc(b.x, b.y, b.r + 2, 0, Math.PI * 2); // 2px offset for stroke
-                ctx.strokeStyle = 'rgba(255,255,255,0.75)'; // dashed white outline
-                ctx.lineWidth = 1;
-                ctx.stroke();
-                ctx.setLineDash([]);
-            }
-        }
     }
 }
 

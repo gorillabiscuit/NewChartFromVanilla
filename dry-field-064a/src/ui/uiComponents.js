@@ -15,28 +15,19 @@
  */
 function updateTooltip(tooltip, mouseX, mouseY, singleBubbles, clusters, canvas, allBubbles) {
     let closest = null;
-    let closestDist = Infinity;
+    let minDist = Infinity;
 
-    for (const b of singleBubbles) {
-        const dx = mouseX - b.x;
-        const dy = mouseY - b.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist < b.r && dist < closestDist && b.showTooltip) {
-            closest = b;
-            closestDist = dist;
+    // Check ALL bubbles for the closest one under the mouse
+    for (const bubble of allBubbles) {
+        const dx = bubble.x - mouseX;
+        const dy = bubble.y - mouseY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < bubble.r && dist < minDist) {
+            minDist = dist;
+            closest = bubble;
         }
     }
-    for (const cluster of clusters) {
-        for (const b of cluster.bubbles) {
-            const dx = mouseX - b.x;
-            const dy = mouseY - b.y;
-            const dist = Math.hypot(dx, dy);
-            if (dist < b.r && dist < closestDist && b.showTooltip) {
-                closest = b;
-                closestDist = dist;
-            }
-        }
-    }
+
     if (closest) {
         // Format expiry (date and time)
         let expiry = '';
@@ -46,31 +37,18 @@ function updateTooltip(tooltip, mouseX, mouseY, singleBubbles, clusters, canvas,
             expiry = d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
             expiryTime = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         }
+
         // Format repayment
         const repayment = closest.repayment ? closest.repayment.toLocaleString() : '';
-        // --- Calculate Total Due (robust cumulative USD from soonest to hovered loan by due date) ---
-        // Only sum over bubbles for the current wallet (allBubbles)
-        const valid = allBubbles.filter(b =>
-            b.dueTime && !isNaN(new Date(b.dueTime).getTime()) &&
-            Number.isFinite(b.repayment) &&
-            b.loanId // or another unique identifier
-        );
-        // Sort by due date ascending, then by loanId (string compare for stability)
-        valid.sort((a, b) => {
-            const dateDiff = new Date(a.dueTime) - new Date(b.dueTime);
-            if (dateDiff !== 0) return dateDiff;
-            return String(a.loanId).localeCompare(String(b.loanId));
-        });
-        // Find hovered loan's index (by loanId)
-        const hoveredIndex = valid.findIndex(b => b.loanId === closest.loanId);
+
+        // Calculate total due
         let totalDue = 0;
-        if (hoveredIndex !== -1) {
-            for (let i = 0; i <= hoveredIndex; i++) {
-                totalDue += valid[i].repayment;
+        for (const bubble of allBubbles) {
+            if (bubble.dueTime && new Date(bubble.dueTime) <= new Date(closest.dueTime)) {
+                totalDue += bubble.repayment || 0;
             }
-        } else {
-            totalDue = Number.isFinite(closest.repayment) ? closest.repayment : 0; // fallback
         }
+
         // Build HTML
         tooltip.innerHTML = `
             <div class="tooltip-header">
@@ -83,11 +61,11 @@ function updateTooltip(tooltip, mouseX, mouseY, singleBubbles, clusters, canvas,
             </div>
             <div class="tooltip-row">
                 <span class="tooltip-label">APR</span>
-                <span class="tooltip-value">${closest.apr ? closest.apr.toFixed(2) : '--'}%${closest.isAprOutlier ? ' (outlier)' : ''}</span>
+                <span class="tooltip-value">${closest.apr ? closest.apr.toFixed(2) : '--'}%</span>
             </div>
             <div class="tooltip-row">
                 <span class="tooltip-label">Repayment</span>
-                <span class="tooltip-value">${repayment} <span class="tooltip-value usdc">USDC</span>${closest.isUsdOutlier ? ' (outlier)' : ''}</span>
+                <span class="tooltip-value">${repayment} <span class="tooltip-value usdc">USDC</span></span>
             </div>
             <div class="tooltip-row">
                 <span class="tooltip-label">Repayment Date</span>
