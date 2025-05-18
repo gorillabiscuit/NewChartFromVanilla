@@ -7,6 +7,8 @@
  * ClusterLayout Module - Handles D3-based circle packing for expanding clusters
  */
 
+import { DEFAULT_BUBBLE_OPACITY, EXPANDED_BUBBLE_OPACITY, DEFAULT_STROKE_OPACITY, EXPANDED_STROKE_OPACITY } from '../config/constants.js';
+
 /**
  * Pack a cluster's bubbles using d3.packSiblings algorithm
  * 
@@ -82,8 +84,21 @@ function packClusterBubbles(cluster, CHART_PADDING_X, WIDTH, CHART_PADDING_TOP, 
  */
 function animateClusterToPacked(cluster, t) {
     for (const b of cluster.bubbles) {
+        // Animate position with smooth easing
         b.x += (b.packedX - b.x) * t;
         b.y += (b.packedY - b.y) * t;
+        
+        // Animate fill opacity with the same smooth easing
+        if (b.opacity === undefined) {
+            b.opacity = DEFAULT_BUBBLE_OPACITY;
+        }
+        b.opacity += (EXPANDED_BUBBLE_OPACITY - b.opacity) * t;
+
+        // Animate stroke opacity with the same smooth easing
+        if (b.strokeOpacity === undefined) {
+            b.strokeOpacity = DEFAULT_STROKE_OPACITY;
+        }
+        b.strokeOpacity += (EXPANDED_STROKE_OPACITY - b.strokeOpacity) * t;
     }
 }
 

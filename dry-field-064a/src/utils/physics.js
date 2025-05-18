@@ -6,7 +6,8 @@ import {
   BASE_REPULSION, REPULSION_POWER, REPULSION_CLUSTER_CAP, OUTWARD_FORCE, OUTWARD_FORCE_DIVISOR,
   OUTWARD_FORCE_POWER, OUTWARD_CLUSTER_CAP, SPRING_CONSTANT, CLUSTER_SCALE_DIVISOR, OVERLAP_SCALE,
   OVERLAP_FORCE_MULTIPLIER, BASE_VELOCITY, VELOCITY_POWER, MAX_FRAMES, REVERT_DELAY, REVERT_SPEED,
-  BASE_DAMPING, EXTRA_DAMPING, DAMPING_CLUSTER_THRESHOLD
+  BASE_DAMPING, EXTRA_DAMPING, DAMPING_CLUSTER_THRESHOLD, DEFAULT_BUBBLE_OPACITY, EXPANDED_BUBBLE_OPACITY,
+  DEFAULT_STROKE_OPACITY, EXPANDED_STROKE_OPACITY
 } from '../config/constants.js';
 import { getBubbleOverlap } from '../data/bubbleUtils.js';
 
@@ -126,6 +127,16 @@ function revertClusterSmoothly(cluster) {
     for (const b of cluster.bubbles) {
         b.x += (b.initialX - b.x) * REVERT_SPEED * 1.5;
         b.y += (b.initialY - b.y) * REVERT_SPEED * 1.5;
+        
+        // Animate fill opacity back to default
+        if (b.opacity !== undefined) {
+            b.opacity += (DEFAULT_BUBBLE_OPACITY - b.opacity) * REVERT_SPEED * 1.5;
+        }
+
+        // Animate stroke opacity back to default
+        if (b.strokeOpacity !== undefined) {
+            b.strokeOpacity += (DEFAULT_STROKE_OPACITY - b.strokeOpacity) * REVERT_SPEED * 1.5;
+        }
 
         const dx = b.x - b.initialX;
         const dy = b.y - b.initialY;
@@ -141,6 +152,8 @@ function revertClusterSmoothly(cluster) {
             b.vx = 0;
             b.vy = 0;
             b.showTooltip = false;
+            b.opacity = DEFAULT_BUBBLE_OPACITY; // Reset fill opacity to default
+            b.strokeOpacity = DEFAULT_STROKE_OPACITY; // Reset stroke opacity to default
         }
         cluster.state = "idle";
         cluster.frameCount = 0;

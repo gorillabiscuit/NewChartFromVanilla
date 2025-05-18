@@ -20,7 +20,7 @@
  */
 
 import { state } from '../state/state.js';
-import { DEFAULT_BUBBLE_OPACITY, EXPANDED_BUBBLE_OPACITY } from '../config/constants.js';
+import { DEFAULT_BUBBLE_OPACITY, EXPANDED_BUBBLE_OPACITY, DEFAULT_STROKE_OPACITY, EXPANDED_STROKE_OPACITY } from '../config/constants.js';
 
 /**
  * Purpose: Rendering utilities for drawing chart axes, bubbles, and grid lines.
@@ -297,7 +297,36 @@ function draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_T
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        
+        // Only apply stroke opacity changes to standalone bubbles
+        const isStandalone = singleBubbles.includes(b);
+        if (isStandalone) {
+            // Set initial stroke opacity if not set
+            if (b.strokeOpacity === undefined) {
+                b.strokeOpacity = DEFAULT_STROKE_OPACITY;
+            }
+            // Check if bubble is being hovered
+            const mouseX = state.mousePosition?.x || 0;
+            const mouseY = state.mousePosition?.y || 0;
+            const dx = mouseX - b.x;
+            const dy = mouseY - b.y;
+            const dist = Math.hypot(dx, dy);
+            
+            // If mouse is over bubble, animate to EXPANDED_STROKE_OPACITY
+            if (dist < b.r) {
+                b.strokeOpacity = Math.min(b.strokeOpacity + 0.1, EXPANDED_STROKE_OPACITY);
+            } else {
+                // Otherwise animate back to DEFAULT_STROKE_OPACITY
+                b.strokeOpacity = Math.max(b.strokeOpacity - 0.1, DEFAULT_STROKE_OPACITY);
+            }
+            ctx.globalAlpha = b.strokeOpacity;
+        } else {
+            // For clustered bubbles, use their existing stroke opacity or default
+            ctx.globalAlpha = b.strokeOpacity || DEFAULT_STROKE_OPACITY;
+        }
+        
         ctx.stroke();
+        ctx.globalAlpha = 1.0;
     }
 }
 
