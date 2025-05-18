@@ -115,12 +115,23 @@ class ClusterInteractionManager {
     handleMouseMove(mousePos) {
         const state = getState();
         let needsUpdate = false;
+        let anyClusterHovered = false;
 
+        // First pass: check if any cluster is being hovered
         const updatedClusters = state.clusters.map(cluster => {
             const isHovering = this.checkHover(cluster, mousePos);
-            const updatedCluster = { ...cluster };
-
             if (isHovering) {
+                anyClusterHovered = true;
+            }
+            return { ...cluster, isHovering };
+        });
+
+        // Second pass: update cluster states based on hover state
+        const finalClusters = updatedClusters.map(cluster => {
+            const updatedCluster = { ...cluster };
+            delete updatedCluster.isHovering; // Clean up temporary property
+
+            if (cluster.isHovering) {
                 if (!updatedCluster.hovering) {
                     console.log(`[Cluster ${cluster.id}] Mouse entered cluster`);
                     updatedCluster.hovering = true;
@@ -147,6 +158,13 @@ class ClusterInteractionManager {
                 }
             }
 
+            // If any cluster is being hovered, revert other expanded clusters
+            if (anyClusterHovered && !cluster.isHovering && updatedCluster.state === "expanded") {
+                console.log(`[Cluster ${cluster.id}] Reverting due to other cluster hover`);
+                updatedCluster.state = "reverting";
+                needsUpdate = true;
+            }
+
             return updatedCluster;
         });
 
@@ -154,7 +172,7 @@ class ClusterInteractionManager {
             console.log('Dispatching cluster updates');
             dispatch({
                 type: 'UPDATE_CLUSTERS',
-                payload: updatedClusters
+                payload: finalClusters
             });
         }
     }
