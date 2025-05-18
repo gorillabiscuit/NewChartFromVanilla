@@ -80,6 +80,21 @@ function animate(ctx, tooltip, canvas, clusters, singleBubbles, allBubbles, show
                         latestState.height || HEIGHT
                     );
                     cluster.packedInitialized = false;
+                    cluster.frameCount = 0;
+                    
+                    // Check if reversion is complete
+                    const isComplete = cluster.bubbles.every(bubble => {
+                        const dx = bubble.x - bubble.originalX;
+                        const dy = bubble.y - bubble.originalY;
+                        return Math.hypot(dx, dy) < 1; // Consider complete if within 1 pixel
+                    });
+                    
+                    if (isComplete) {
+                        cluster.state = "collapsed";
+                        for (const b of cluster.bubbles) {
+                            b.showTooltip = false;
+                        }
+                    }
                 }
             }
 

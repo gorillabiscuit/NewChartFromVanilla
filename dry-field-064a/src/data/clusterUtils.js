@@ -286,6 +286,8 @@ function useLoanDataForBubbles(loans, allBubbles, clusters, singleBubbles, clear
 function findClusters(bubbles, clusters, singleBubbles, bubblesOverlap, VELOCITY_POWER, BASE_VELOCITY) {
     const visited = new Set();
     const clusterMap = new Map();
+    let clusterId = 0;  // Add counter for unique IDs
+    
     for (const b of bubbles) {
         if (visited.has(b)) continue;
         const cluster = [];
@@ -307,6 +309,7 @@ function findClusters(bubbles, clusters, singleBubbles, bubblesOverlap, VELOCITY
         }
         if (clusterSize > 1) {
             clusters.push({ 
+                id: `cluster-${clusterId++}`,  // Add unique ID
                 bubbles: cluster, 
                 state: "idle", 
                 hovering: false, 

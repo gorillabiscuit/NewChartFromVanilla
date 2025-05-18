@@ -2,6 +2,7 @@ import { REVERT_DELAY } from './config/constants.js';
 import { applyOutwardForce } from './utils/physics.js';
 import { dispatch, getState } from './state/state.js';
 import EventManager from './event/EventManager.js';
+import ClusterInteractionManager from './event/ClusterInteractionManager.js';
 
 /**
  * Purpose: Handles mouse and user interactions with the chart canvas.
@@ -102,6 +103,7 @@ function handleClusterInteractions(clusters, mousePos, width, height) {
  */
 function setupMouseInteraction(canvas, clusters, tooltip, width, height) {
     const eventManager = new EventManager(canvas);
+    const clusterManager = new ClusterInteractionManager();
     
     // Handle mouseout
     eventManager.on('mouseout', () => {
@@ -119,12 +121,17 @@ function setupMouseInteraction(canvas, clusters, tooltip, width, height) {
             type: 'SET_MOUSE_POSITION', 
             payload: { x: mousePos.x, y: mousePos.y } 
         });
-        console.log('Mouse moved:', mousePos);
-        // Always use the latest clusters from state
-        const latestClusters = getState().clusters;
-        console.log('Latest clusters:', latestClusters);
-        handleClusterInteractions(latestClusters, mousePos, width, height);
+        
+        // Use ClusterInteractionManager to handle cluster interactions
+        clusterManager.handleMouseMove(mousePos);
     });
+
+    // Add cleanup to event manager
+    const originalCleanup = eventManager.cleanup;
+    eventManager.cleanup = () => {
+        originalCleanup();
+        clusterManager.cleanup();
+    };
 
     return eventManager;
 }
