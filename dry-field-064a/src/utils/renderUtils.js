@@ -20,6 +20,7 @@
  */
 
 import { state } from '../state/state.js';
+import { DEFAULT_BUBBLE_OPACITY, EXPANDED_BUBBLE_OPACITY } from '../config/constants.js';
 
 /**
  * Purpose: Rendering utilities for drawing chart axes, bubbles, and grid lines.
@@ -260,7 +261,34 @@ function draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_T
             ctx.drawImage(b.img, b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
         } else {
             ctx.fillStyle = PROTOCOL_COLORS[b.protocol] || DEFAULT_PROTOCOL_COLOR;
-            ctx.globalAlpha = 0.65;
+            
+            // Only apply opacity changes to standalone bubbles
+            const isStandalone = singleBubbles.includes(b);
+            if (isStandalone) {
+                // Set initial opacity to DEFAULT_BUBBLE_OPACITY if not set
+                if (b.opacity === undefined) {
+                    b.opacity = DEFAULT_BUBBLE_OPACITY;
+                }
+                // Check if bubble is being hovered
+                const mouseX = state.mousePosition?.x || 0;
+                const mouseY = state.mousePosition?.y || 0;
+                const dx = mouseX - b.x;
+                const dy = mouseY - b.y;
+                const dist = Math.hypot(dx, dy);
+                
+                // If mouse is over bubble, animate to EXPANDED_BUBBLE_OPACITY
+                if (dist < b.r) {
+                    b.opacity = Math.min(b.opacity + 0.1, EXPANDED_BUBBLE_OPACITY);
+                } else {
+                    // Otherwise animate back to DEFAULT_BUBBLE_OPACITY
+                    b.opacity = Math.max(b.opacity - 0.1, DEFAULT_BUBBLE_OPACITY);
+                }
+                ctx.globalAlpha = b.opacity;
+            } else {
+                // For clustered bubbles, use their existing opacity or default
+                ctx.globalAlpha = b.opacity || DEFAULT_BUBBLE_OPACITY;
+            }
+            
             ctx.fill();
             ctx.globalAlpha = 1.0;
         }
