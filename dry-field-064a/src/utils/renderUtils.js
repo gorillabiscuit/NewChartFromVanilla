@@ -156,6 +156,8 @@ function drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDI
         const maxAPR = Math.max(...loans.map(l => l.apr));
         let aprTicks = niceLinearTicks(minAPR, maxAPR, 8);
         if (aprTicks.length > 1) aprTicks = aprTicks.slice(1);
+        // Only keep whole number ticks
+        aprTicks = aprTicks.filter(tick => Number.isInteger(tick));
         aprTicks.forEach(tick => {
             const y = CHART_PADDING_TOP + (CHART_HEIGHT - CHART_PADDING_TOP) * (1 - (tick - minAPR) / ((maxAPR - minAPR) || 1));
             // Draw grid line
@@ -175,7 +177,8 @@ function drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDI
             ctx.textAlign = 'right';
             ctx.textBaseline = 'middle';
             ctx.font = '13px Inter, Arial, sans-serif';
-            ctx.fillText(tick % 1 === 0 ? `${tick}` : tick.toFixed(2), CHART_PADDING_X - TICK_LENGTH - TICK_PADDING, y);
+            // Format as whole number percent, no decimals
+            ctx.fillText(Math.round(tick) + '%', CHART_PADDING_X, y);
         });
     }
     
