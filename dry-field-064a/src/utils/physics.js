@@ -124,8 +124,8 @@ function applyOutwardForce(cluster, WIDTH, HEIGHT) {
 function revertClusterSmoothly(cluster) {
     let allClose = true;
     for (const b of cluster.bubbles) {
-        b.x += (b.initialX - b.x) * REVERT_SPEED;
-        b.y += (b.initialY - b.y) * REVERT_SPEED;
+        b.x += (b.initialX - b.x) * REVERT_SPEED * 1.5;
+        b.y += (b.initialY - b.y) * REVERT_SPEED * 1.5;
 
         const dx = b.x - b.initialX;
         const dy = b.y - b.initialY;
