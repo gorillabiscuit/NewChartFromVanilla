@@ -36,6 +36,8 @@ export class CollectionController {
 
         try {
             dispatch({ type: 'SET_STATUS', payload: COLLECTION_STATES.LOADING });
+            // Preserve the current wallet state
+            dispatch({ type: 'SET_CURRENT_WALLET', payload: this.currentWallet });
 
             // Check if collection has loans in current period
             const hasLoansInCurrentPeriod = this.collectionDropdown.currentLoans.some(loan => 
@@ -91,6 +93,8 @@ export class CollectionController {
             this.currentPeriod = period;
 
             dispatch({ type: 'SET_STATUS', payload: COLLECTION_STATES.LOADING });
+            // Preserve the current wallet state
+            dispatch({ type: 'SET_CURRENT_WALLET', payload: wallet });
 
             const loans = await CollectionService.fetchLoans(wallet, period);
             
