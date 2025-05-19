@@ -73,6 +73,11 @@ function setupImageToggle(imageToggle) {
         const newState = !imageToggle.classList.contains('active');
         dispatch({ type: 'TOGGLE_IMAGES', payload: newState });
         imageToggle.classList.toggle('active');
+        // Force a redraw by dispatching SET_STATUS with the current status
+        import('../state/state.js').then(({ getState, dispatch }) => {
+            const status = getState().status;
+            dispatch({ type: 'SET_STATUS', payload: status });
+        });
     });
 }
 
