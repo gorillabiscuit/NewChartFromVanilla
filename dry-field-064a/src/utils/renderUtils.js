@@ -133,6 +133,22 @@ const TICK_LENGTH = 5;
 const TICK_PADDING = 5;
 const DATE_TICK_COUNT = 12;
 
+// Utility to measure the widest Y-axis label
+function getMaxYLabelWidth(ctx, minAPR, maxAPR) {
+    ctx.save();
+    ctx.font = '13px Inter, Arial, sans-serif';
+    // Consider the largest possible label in the range, formatted as a percent
+    const candidates = [minAPR, maxAPR, 0, 100, 999];
+    let maxWidth = 0;
+    for (const val of candidates) {
+        const label = Math.round(val) + '%';
+        const width = ctx.measureText(label).width;
+        if (width > maxWidth) maxWidth = width;
+    }
+    ctx.restore();
+    return maxWidth;
+}
+
 /**
  * Draw axes on the chart
  * @param {CanvasRenderingContext2D} ctx
@@ -148,7 +164,15 @@ const DATE_TICK_COUNT = 12;
 function drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE) {
     ctx.save();
     ctx.lineWidth = 1;
-    
+    let dynamicPaddingX = CHART_PADDING_X;
+    // Dynamically calculate left padding for Y-axis labels
+    if (allBubbles.length > 0) {
+        const loans = allBubbles;
+        const minAPR = Math.min(...loans.map(l => l.apr));
+        const maxAPR = Math.max(...loans.map(l => l.apr));
+        const labelWidth = getMaxYLabelWidth(ctx, minAPR, maxAPR);
+        dynamicPaddingX = Math.max(CHART_PADDING_X, Math.ceil(labelWidth + 16)); // 16px margin
+    }
     // Draw Y axis APR ticks, grid lines, and labels (D3-inspired)
     if (allBubbles.length > 0) {
         const loans = allBubbles;
@@ -156,29 +180,27 @@ function drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDI
         const maxAPR = Math.max(...loans.map(l => l.apr));
         let aprTicks = niceLinearTicks(minAPR, maxAPR, 8);
         if (aprTicks.length > 1) aprTicks = aprTicks.slice(1);
-        // Only keep whole number ticks
         aprTicks = aprTicks.filter(tick => Number.isInteger(tick));
         aprTicks.forEach(tick => {
             const y = CHART_PADDING_TOP + (CHART_HEIGHT - CHART_PADDING_TOP) * (1 - (tick - minAPR) / ((maxAPR - minAPR) || 1));
             // Draw grid line
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; // semi-transparent white
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
             ctx.beginPath();
-            ctx.moveTo(CHART_PADDING_X, y);
+            ctx.moveTo(dynamicPaddingX, y);
             ctx.lineTo(WIDTH, y);
             ctx.stroke();
             // Draw tick in left margin
-            ctx.strokeStyle = '#B6B1D5'; // lighter color for axis
+            ctx.strokeStyle = '#B6B1D5';
             ctx.beginPath();
-            ctx.moveTo(CHART_PADDING_X - TICK_LENGTH, y);
-            ctx.lineTo(CHART_PADDING_X, y);
+            ctx.moveTo(dynamicPaddingX - TICK_LENGTH, y);
+            ctx.lineTo(dynamicPaddingX, y);
             ctx.stroke();
             // Draw label in left margin
-            ctx.fillStyle = '#B6B1D5'; // lighter color for labels
+            ctx.fillStyle = '#B6B1D5';
             ctx.textAlign = 'right';
             ctx.textBaseline = 'middle';
             ctx.font = '13px Inter, Arial, sans-serif';
-            // Format as whole number percent, no decimals
-            ctx.fillText(Math.round(tick) + '%', CHART_PADDING_X, y);
+            ctx.fillText(Math.round(tick) + '%', dynamicPaddingX - TICK_LENGTH - 2, y);
         });
     }
     
@@ -186,24 +208,21 @@ function drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDI
     if (allBubbles.length > 0 && PADDED_MIN_DATE !== null && PADDED_MAX_DATE !== null) {
         const paddedMinDate = PADDED_MIN_DATE;
         const paddedMaxDate = PADDED_MAX_DATE;
-        const scale = timeScale([paddedMinDate, paddedMaxDate], [CHART_PADDING_X, WIDTH - CHART_PADDING_X]);
+        const scale = timeScale([paddedMinDate, paddedMaxDate], [dynamicPaddingX, WIDTH - dynamicPaddingX]);
         const {ticks: dateTicks, format: dateFormat} = niceDateTicks(paddedMinDate, paddedMaxDate, DATE_TICK_COUNT);
         dateTicks.forEach(date => {
             const x = scale(date.getTime());
-            // Draw grid line
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; // semi-transparent white
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
             ctx.beginPath();
             ctx.moveTo(x, CHART_PADDING_TOP);
             ctx.lineTo(x, CHART_HEIGHT);
             ctx.stroke();
-            // Draw tick
-            ctx.strokeStyle = '#B6B1D5'; // lighter color for axis
+            ctx.strokeStyle = '#B6B1D5';
             ctx.beginPath();
             ctx.moveTo(x, CHART_HEIGHT);
             ctx.lineTo(x, CHART_HEIGHT + TICK_LENGTH);
             ctx.stroke();
-            // Draw date label in the dark area, above the bottom padding
-            ctx.fillStyle = '#B6B1D5'; // lighter color for labels
+            ctx.fillStyle = '#B6B1D5';
             ctx.textAlign = 'center';
             const dateStr = dateFormat(date);
             ctx.fillText(dateStr, x, CHART_HEIGHT + TICK_LENGTH + TICK_PADDING + 10);
