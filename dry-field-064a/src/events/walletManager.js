@@ -40,7 +40,7 @@ export function setupWalletChangeHandler(
     walletEventManager.on('change', async (e) => {
         const selectedWallet = e.target.value;
         if (selectedWallet) {
-            await chartController.changeWallet(selectedWallet);
+            await chartController.loadLoans(selectedWallet, 30);
         }
     });
 
@@ -67,7 +67,7 @@ export function loadInitialData(initialWallet, allBubbles, clusters, singleBubbl
         MAX_FRAMES: config.MAX_FRAMES
     });
     
-    chartController.changeWallet(initialWallet);
+    chartController.loadLoans(initialWallet, 30);
 }
 
 // Helper to log image loading triggers

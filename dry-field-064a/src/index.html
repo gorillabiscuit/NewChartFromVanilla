@@ -354,17 +354,17 @@
         // Handle wallet change
         walletSelect.addEventListener('change', () => {
             selectedWallet = walletSelect.value;
-            chartController.changeWallet(selectedWallet, selectedPeriod);
+            chartController.loadLoans(selectedWallet, selectedPeriod);
         });
 
         // Handle period change
         periodSelect.addEventListener('change', () => {
             selectedPeriod = parseInt(periodSelect.value, 10);
-            chartController.changeWallet(selectedWallet, selectedPeriod);
+            chartController.loadLoans(selectedWallet, selectedPeriod);
         });
 
         // Initial load
-        chartController.changeWallet(selectedWallet, selectedPeriod);
+        chartController.loadLoans(selectedWallet, selectedPeriod);
     });
     </script>
 </body>

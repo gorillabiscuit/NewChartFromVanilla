@@ -34,9 +34,9 @@ async function fetchLoanData(walletAddress, period = 30) {
     try {
         let url;
         if (walletAddress === '__ALL__') {
-            url = `https://theta-sdk-api.nftfi.com/data/v0/pipes/loans_due_endpoint.json?howDaysFromNow=${period}&page_size=1000000&page=0`;
+            url = `https://sdk-api.nftfi.com/data/v0/pipes/loans_due_endpoint.json?page_size=1000000&page=0&daysFromNow=${period}&sort_by=secondsUntilDue&sort_order=ASC`;
         } else {
-            url = `https://theta-sdk-api.nftfi.com/data/v0/pipes/loans_due_endpoint.json?howDaysFromNow=${period}&page_size=1000000&borrowerAddress=${walletAddress}&page=0`;
+            url = `https://sdk-api.nftfi.com/data/v0/pipes/loans_due_endpoint.json?wallets=${walletAddress}&page_size=1000000&page=0&daysFromNow=${period}&sort_by=secondsUntilDue&sort_order=ASC`;
         }
         const response = await fetch(url);
         const data = await response.json();

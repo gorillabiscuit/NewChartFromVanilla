@@ -109,9 +109,9 @@ export class ChartController {
         }
     }
 
-    async changeWallet(newWallet, period = 30) {
+    async loadLoans(wallet, period = 30) {
         if (this.isTransitioning) {
-            this.pendingStateUpdate = newWallet;
+            this.pendingStateUpdate = { wallet, period };
             return;
         }
         
@@ -128,7 +128,7 @@ export class ChartController {
         dispatch({ type: 'SET_ERROR', payload: null });
         dispatch({ type: 'INCREMENT_IMAGE_LOAD_GENERATION' });
         dispatch({ type: 'CLEAR_BUBBLES' });
-        dispatch({ type: 'SET_CURRENT_WALLET', payload: newWallet });
+        dispatch({ type: 'SET_CURRENT_WALLET', payload: wallet });
         
         // Defensive: Clear canvas only if available
         if (this.canvas && this.ctx) {
@@ -137,7 +137,7 @@ export class ChartController {
         
         try {
             // 4. Fetch new data
-            const data = await fetchLoanData(newWallet, period);
+            const data = await fetchLoanData(wallet, period);
             
             // 5. Update state atomically if still current version
             if (this.stateVersion === currentVersion && data && data.data && data.data.length > 0) {
@@ -145,7 +145,7 @@ export class ChartController {
                 const newAllBubbles = [];
                 const newClusters = [];
                 const newSingleBubbles = [];
-                const isAllLoansMode = newWallet === '__ALL__';
+                const isAllLoansMode = wallet === '__ALL__';
                 const showImages = getState().showImages;
                 
                 const bubblesResult = useLoanDataForBubbles(
@@ -208,7 +208,7 @@ export class ChartController {
             if (this.pendingStateUpdate) {
                 const pending = this.pendingStateUpdate;
                 this.pendingStateUpdate = null;
-                this.changeWallet(pending);
+                this.loadLoans(pending.wallet, pending.period);
             }
         }
     }
