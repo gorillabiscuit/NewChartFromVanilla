@@ -27,15 +27,16 @@
 /**
  * Fetch loan data for a specific wallet address or all loans
  * @param {string} walletAddress - The wallet address to fetch loans for, or '__ALL__' for all loans
+ * @param {number} period - The period in days for the filter
  * @returns {Promise<Object>} - The API response data
  */
-async function fetchLoanData(walletAddress) {
+async function fetchLoanData(walletAddress, period = 30) {
     try {
         let url;
         if (walletAddress === '__ALL__') {
-            url = `https://theta-sdk-api.nftfi.com/data/v0/pipes/loans_due_endpoint.json?daysFromNow=30&page_size=1000000&page=0`;
+            url = `https://theta-sdk-api.nftfi.com/data/v0/pipes/loans_due_endpoint.json?howDaysFromNow=${period}&page_size=1000000&page=0`;
         } else {
-            url = `https://theta-sdk-api.nftfi.com/data/v0/pipes/loans_due_endpoint.json?daysFromNow=30&page_size=1000000&borrowerAddress=${walletAddress}&page=0`;
+            url = `https://theta-sdk-api.nftfi.com/data/v0/pipes/loans_due_endpoint.json?howDaysFromNow=${period}&page_size=1000000&borrowerAddress=${walletAddress}&page=0`;
         }
         const response = await fetch(url);
         const data = await response.json();

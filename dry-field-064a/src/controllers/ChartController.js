@@ -109,7 +109,7 @@ export class ChartController {
         }
     }
 
-    async changeWallet(newWallet) {
+    async changeWallet(newWallet, period = 30) {
         if (this.isTransitioning) {
             this.pendingStateUpdate = newWallet;
             return;
@@ -137,7 +137,7 @@ export class ChartController {
         
         try {
             // 4. Fetch new data
-            const data = await fetchLoanData(newWallet);
+            const data = await fetchLoanData(newWallet, period);
             
             // 5. Update state atomically if still current version
             if (this.stateVersion === currentVersion && data && data.data && data.data.length > 0) {

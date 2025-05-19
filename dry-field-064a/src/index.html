@@ -93,9 +93,20 @@
     </style>
 </head>
 <body>
-    <select id="walletSelect" class="wallet-selector">
-        <option value="">Select a wallet...</option>
-    </select>
+    <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 10px;">
+        <select id="walletSelect" class="wallet-selector">
+            <option value="">Select a wallet...</option>
+        </select>
+        <select id="periodSelect" class="wallet-selector" style="width: 120px;">
+            <option value="7">7 days</option>
+            <option value="14">14 days</option>
+            <option value="30" selected>30 days</option>
+            <option value="60">60 days</option>
+            <option value="90">90 days</option>
+            <option value="180">180 days</option>
+            <option value="365">365 days</option>
+        </select>
+    </div>
     <button id="imageToggle" class="toggle-button">Show Images</button>
     <div id="loadingIndicator" style="display:none; margin: 20px; font-size: 18px; color: #D14D8A;">Loading...</div>
     <div id="errorIndicator" style="display:none; margin: 20px; font-size: 18px; color: #ff4d4f;"></div>
@@ -329,6 +340,31 @@
             noDataMessage.style.display = 'none';
             canvas.style.display = 'block';
         }
+    });
+
+    // Period dropdown logic
+    const periodSelect = document.getElementById('periodSelect');
+    let selectedPeriod = parseInt(periodSelect.value, 10);
+    let selectedWallet = walletSelect.value;
+
+    // ChartController instance
+    import('./controllers/ChartController.js').then(({ ChartController }) => {
+        const chartController = new ChartController(ctx, canvas, tooltip, chartConfig);
+
+        // Handle wallet change
+        walletSelect.addEventListener('change', () => {
+            selectedWallet = walletSelect.value;
+            chartController.changeWallet(selectedWallet, selectedPeriod);
+        });
+
+        // Handle period change
+        periodSelect.addEventListener('change', () => {
+            selectedPeriod = parseInt(periodSelect.value, 10);
+            chartController.changeWallet(selectedWallet, selectedPeriod);
+        });
+
+        // Initial load
+        chartController.changeWallet(selectedWallet, selectedPeriod);
     });
     </script>
 </body>
