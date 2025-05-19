@@ -19,7 +19,7 @@
  * - UI updates (except canvas drawing)
  */
 
-import { state } from '../state/state.js';
+import { state, getState } from '../state/state.js';
 import { DEFAULT_BUBBLE_OPACITY, EXPANDED_BUBBLE_OPACITY, DEFAULT_STROKE_OPACITY, EXPANDED_STROKE_OPACITY } from '../config/constants.js';
 
 /**
@@ -165,9 +165,41 @@ function drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDI
     ctx.save();
     ctx.lineWidth = 1;
     let dynamicPaddingX = CHART_PADDING_X;
+    const state = getState();
 
     // Draw Y axis APR ticks, grid lines, and labels (D3-inspired)
-    if (allBubbles && allBubbles.length > 0) {
+    if (state.useCustomRanges && state.customAprRange) {
+        // Use custom APR range for single loan case
+        const { min: minAPR, max: maxAPR } = state.customAprRange;
+        const labelWidth = getMaxYLabelWidth(ctx, minAPR, maxAPR);
+        dynamicPaddingX = Math.max(CHART_PADDING_X, Math.ceil(labelWidth + 16)); // 16px margin
+
+        let aprTicks = niceLinearTicks(minAPR, maxAPR, 8);
+        if (aprTicks.length > 1) aprTicks = aprTicks.slice(1);
+        aprTicks = aprTicks.filter(tick => Number.isInteger(tick));
+        aprTicks.forEach(tick => {
+            const y = CHART_PADDING_TOP + (CHART_HEIGHT - CHART_PADDING_TOP) * (1 - (tick - minAPR) / ((maxAPR - minAPR) || 1));
+            // Draw grid line
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.beginPath();
+            ctx.moveTo(dynamicPaddingX, y);
+            ctx.lineTo(WIDTH, y);
+            ctx.stroke();
+            // Draw tick in left margin
+            ctx.strokeStyle = '#B6B1D5';
+            ctx.beginPath();
+            ctx.moveTo(dynamicPaddingX - TICK_LENGTH, y);
+            ctx.lineTo(dynamicPaddingX, y);
+            ctx.stroke();
+            // Draw label in left margin
+            ctx.fillStyle = '#B6B1D5';
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            ctx.font = '13px Inter, Arial, sans-serif';
+            ctx.fillText(Math.round(tick) + '%', dynamicPaddingX - TICK_LENGTH - 2, y);
+        });
+    } else if (allBubbles && allBubbles.length > 0) {
+        // Use data-derived APR range for normal case
         const loans = allBubbles;
         const minAPR = Math.min(...loans.map(l => l.apr));
         const maxAPR = Math.max(...loans.map(l => l.apr));
@@ -180,7 +212,7 @@ function drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDI
         aprTicks.forEach(tick => {
             const y = CHART_PADDING_TOP + (CHART_HEIGHT - CHART_PADDING_TOP) * (1 - (tick - minAPR) / ((maxAPR - minAPR) || 1));
             // Draw grid line
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
             ctx.beginPath();
             ctx.moveTo(dynamicPaddingX, y);
             ctx.lineTo(WIDTH, y);
@@ -201,9 +233,9 @@ function drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDI
     }
     
     // Draw X axis date ticks and grid lines (D3-inspired)
-    if (PADDED_MIN_DATE !== null && PADDED_MAX_DATE !== null) {
-        const paddedMinDate = PADDED_MIN_DATE;
-        const paddedMaxDate = PADDED_MAX_DATE;
+    if (state.useCustomRanges && state.customDateRange) {
+        // Use custom date range for single loan case
+        const { min: paddedMinDate, max: paddedMaxDate } = state.customDateRange;
         const scale = timeScale([paddedMinDate, paddedMaxDate], [dynamicPaddingX, WIDTH - dynamicPaddingX]);
         const {ticks: dateTicks, format: dateFormat} = niceDateTicks(paddedMinDate, paddedMaxDate, DATE_TICK_COUNT);
         let lastLabelX = null;
@@ -211,7 +243,7 @@ function drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDI
         const margin = 8;
         dateTicks.forEach((date, i) => {
             const x = scale(date.getTime());
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
             ctx.beginPath();
             ctx.moveTo(x, CHART_PADDING_TOP);
             ctx.lineTo(x, CHART_HEIGHT);
@@ -227,13 +259,55 @@ function drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDI
             const labelWidth = ctx.measureText(dateStr).width;
             let shouldDraw = true;
             if (lastLabelX !== null) {
-                // Always draw first and last, skip if overlap for others
                 if (i !== 0 && i !== dateTicks.length - 1) {
                     if (Math.abs(x - lastLabelX) < (labelWidth + lastLabelWidth) / 2 + margin) {
                         shouldDraw = false;
                     }
                 }
-                // For last label, if overlap, skip previous and draw this one
+                if (i === dateTicks.length - 1 && lastLabelX !== null) {
+                    if (Math.abs(x - lastLabelX) < (labelWidth + lastLabelWidth) / 2 + margin) {
+                        shouldDraw = true;
+                    }
+                }
+            }
+            if (shouldDraw) {
+                ctx.fillText(dateStr, x, CHART_HEIGHT + TICK_LENGTH + TICK_PADDING + 10);
+                lastLabelX = x;
+                lastLabelWidth = labelWidth;
+            }
+        });
+    } else if (PADDED_MIN_DATE !== null && PADDED_MAX_DATE !== null) {
+        // Use data-derived date range for normal case
+        const paddedMinDate = PADDED_MIN_DATE;
+        const paddedMaxDate = PADDED_MAX_DATE;
+        const scale = timeScale([paddedMinDate, paddedMaxDate], [dynamicPaddingX, WIDTH - dynamicPaddingX]);
+        const {ticks: dateTicks, format: dateFormat} = niceDateTicks(paddedMinDate, paddedMaxDate, DATE_TICK_COUNT);
+        let lastLabelX = null;
+        let lastLabelWidth = null;
+        const margin = 8;
+        dateTicks.forEach((date, i) => {
+            const x = scale(date.getTime());
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.beginPath();
+            ctx.moveTo(x, CHART_PADDING_TOP);
+            ctx.lineTo(x, CHART_HEIGHT);
+            ctx.stroke();
+            ctx.strokeStyle = '#B6B1D5';
+            ctx.beginPath();
+            ctx.moveTo(x, CHART_HEIGHT);
+            ctx.lineTo(x, CHART_HEIGHT + TICK_LENGTH);
+            ctx.stroke();
+            ctx.fillStyle = '#B6B1D5';
+            ctx.textAlign = 'center';
+            const dateStr = dateFormat(date);
+            const labelWidth = ctx.measureText(dateStr).width;
+            let shouldDraw = true;
+            if (lastLabelX !== null) {
+                if (i !== 0 && i !== dateTicks.length - 1) {
+                    if (Math.abs(x - lastLabelX) < (labelWidth + lastLabelWidth) / 2 + margin) {
+                        shouldDraw = false;
+                    }
+                }
                 if (i === dateTicks.length - 1 && lastLabelX !== null) {
                     if (Math.abs(x - lastLabelX) < (labelWidth + lastLabelWidth) / 2 + margin) {
                         shouldDraw = true;
@@ -304,7 +378,34 @@ function draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_T
         ctx.closePath();
         if (showImages && b.img && b.img.complete && b.img.naturalWidth > 0) {
             ctx.clip();
+            // Apply the same opacity logic as bubble fills
+            const isStandalone = singleBubbles.includes(b);
+            if (isStandalone) {
+                // Set initial opacity to DEFAULT_BUBBLE_OPACITY if not set
+                if (b.opacity === undefined) {
+                    b.opacity = DEFAULT_BUBBLE_OPACITY;
+                }
+                // Check if bubble is being hovered
+                const mouseX = state.mousePosition?.x || 0;
+                const mouseY = state.mousePosition?.y || 0;
+                const dx = mouseX - b.x;
+                const dy = mouseY - b.y;
+                const dist = Math.hypot(dx, dy);
+                
+                // If mouse is over bubble, animate to EXPANDED_BUBBLE_OPACITY
+                if (dist < b.r) {
+                    b.opacity = Math.min(b.opacity + 0.1, EXPANDED_BUBBLE_OPACITY);
+                } else {
+                    // Otherwise animate back to DEFAULT_BUBBLE_OPACITY
+                    b.opacity = Math.max(b.opacity - 0.1, DEFAULT_BUBBLE_OPACITY);
+                }
+                ctx.globalAlpha = b.opacity;
+            } else {
+                // For clustered bubbles, use their existing opacity or default
+                ctx.globalAlpha = b.opacity || DEFAULT_BUBBLE_OPACITY;
+            }
             ctx.drawImage(b.img, b.x - b.r, b.y - b.r, b.r * 2, b.r * 2);
+            ctx.globalAlpha = 1.0;
         } else {
             ctx.fillStyle = PROTOCOL_COLORS[b.protocol] || DEFAULT_PROTOCOL_COLOR;
             
