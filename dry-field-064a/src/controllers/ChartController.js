@@ -190,6 +190,10 @@ export class ChartController {
                 // No data or error
                 dispatch({ type: 'SET_STATUS', payload: 'error' });
                 dispatch({ type: 'SET_ERROR', payload: 'No loans found for this wallet.' });
+                // Force a visual update
+                import('../state/state.js').then(({ dispatch }) => {
+                    dispatch({ type: 'SET_CANVAS_DIMENSIONS', payload: {} });
+                });
             }
         } catch (error) {
             if (this.stateVersion === currentVersion) {

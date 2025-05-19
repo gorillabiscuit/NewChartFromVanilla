@@ -22,6 +22,12 @@ export const BASE_DAMPING = 0.75;
 export const EXTRA_DAMPING = 0.15;
 export const DAMPING_CLUSTER_THRESHOLD = 6;
 
+// Opacity Constants
+export const DEFAULT_BUBBLE_OPACITY = 0.18;
+export const EXPANDED_BUBBLE_OPACITY = 0.68;
+export const DEFAULT_STROKE_OPACITY = 0.3;
+export const EXPANDED_STROKE_OPACITY = 0.8;
+
 // Layout Constants
 export const CHART_HEIGHT_RATIO = 0.88; // Reduce plot area to leave space for x-axis labels
 export const CHART_PADDING_X = 24; // 24px left padding for y-axis

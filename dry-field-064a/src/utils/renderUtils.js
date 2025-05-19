@@ -231,6 +231,11 @@ function drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDI
  * @param {Date|null} PADDED_MAX_DATE
  */
 function draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, singleBubbles, clusters, showImages, PROTOCOL_COLORS, DEFAULT_PROTOCOL_COLOR, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE) {
+    if (!allBubbles || allBubbles.length === 0) {
+        ctx.clearRect(0, 0, WIDTH, HEIGHT);
+        return;
+    }
+    
     // Clear and setup background
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
     

@@ -137,7 +137,7 @@
     let WIDTH = canvas.width;
     let HEIGHT = canvas.height;
     let CHART_HEIGHT = Math.round(HEIGHT * 0.88); // Reduce plot area to leave space for x-axis labels
-    let CHART_PADDING_X = 24; // 24px left padding for y-axis
+    let CHART_PADDING_X = 240; // 24px left padding for y-axis
     let CHART_PADDING_TOP = Math.round(HEIGHT * 0.03); // 3% top padding
     let CHART_PADDING_BOTTOM = Math.round(HEIGHT * 0.09); // 9% bottom padding for x-axis labels
 
@@ -318,6 +318,16 @@
         const tooltip = document.getElementById('tooltip');
         if (tooltip && newState.status !== 'ready') {
             tooltip.style.visibility = 'hidden';
+        }
+    });
+
+    subscribe((state) => {
+        if (state.status === 'error' && state.error === 'No loans found for this wallet.') {
+            noDataMessage.style.display = 'block';
+            canvas.style.display = 'none';
+        } else if (state.status === 'ready') {
+            noDataMessage.style.display = 'none';
+            canvas.style.display = 'block';
         }
     });
     </script>

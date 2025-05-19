@@ -25,7 +25,7 @@ function createNoDataMessage() {
         msg.style.textAlign = 'center';
         msg.style.margin = '16px auto 0 auto';
         msg.style.maxWidth = '600px';
-        msg.innerText = 'No valid loans found for this wallet.';
+        msg.innerText = 'No loans found for this wallet. Please pick another wallet.';
         document.querySelector('.app').insertAdjacentElement('beforebegin', msg);
         return msg;
     }
