@@ -4,7 +4,7 @@
  */
 
 import EventManager from '../event/EventManager.js';
-import { dispatch, getState } from '../state/state.js';
+import { dispatch, getState, state } from '../state/state.js';
 
 /**
  * Creates a no data message element
@@ -67,16 +67,19 @@ function setupWalletDropdown(walletSelect, wallets) {
  * @param {HTMLElement} imageToggle - The image toggle button
  */
 function setupImageToggle(imageToggle) {
-    console.log('Setting up image toggle');
-    const eventManager = new EventManager(imageToggle);
-    eventManager.on('click', () => {
-        const newState = !imageToggle.classList.contains('active');
+    // Remove any old event listeners if present
+    imageToggle.replaceWith(imageToggle.cloneNode(true));
+    const newToggle = document.getElementById('imageToggle');
+    newToggle.checked = state.showImages;
+    newToggle.addEventListener('change', () => {
+        const newState = newToggle.checked;
         dispatch({ type: 'TOGGLE_IMAGES', payload: newState });
-        imageToggle.classList.toggle('active');
         // Force a redraw by dispatching SET_STATUS with the current status
         import('../state/state.js').then(({ getState, dispatch }) => {
             const status = getState().status;
             dispatch({ type: 'SET_STATUS', payload: status });
+            // Force a visual update
+            dispatch({ type: 'SET_CANVAS_DIMENSIONS', payload: {} });
         });
     });
 }

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Loan Bubble Graph - Corrected with Dense Overlaps</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💸</text></svg>">
+    <link rel="stylesheet" href="styles.css">
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body {
@@ -49,6 +50,7 @@
             width: 100%;
             height: 365px;
             position: relative;
+
         }
         canvas {
             display: block;
@@ -90,6 +92,89 @@
             background: #463D69;
             color: #ffffff;
         }
+        .chart-header {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+        .chart-title {
+            width: 138px;
+            height: 28px;
+            font-family: 'Public Sans', sans-serif;
+            font-style: normal;
+            font-weight: 700;
+            font-size: 18px;
+            line-height: 28px;
+            color: #FFFFFF;
+            white-space: nowrap;
+        }
+        .switch-root {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 9px;
+            width: 128px;
+            height: 38px;
+        }
+        .switch-label {
+            width: 86px;
+            height: 22px;
+            font-family: 'Public Sans', sans-serif;
+            font-style: normal;
+            font-weight: 266;
+            font-size: 14px;
+            line-height: 22px;
+            color: #FFFFFF;
+            text-align: right;
+        }
+        .switch-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 9px 0px;
+            width: 33px;
+            height: 38px;
+        }
+        .switch-input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .switch-slider {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            padding: 3px 3px 3px 3px;
+            width: 33px;
+            height: 16px;
+            background: rgba(145, 158, 171, 0.48);
+            border-radius: 50px;
+            position: relative;
+            transition: background 0.2s;
+        }
+        .switch-slider::before {
+            content: "";
+            position: absolute;
+            left: 4px;
+            top: 4px;
+            width: 14px;
+            height: 14px;
+            background: #FFFFFF;
+            border-radius: 50%;
+            transition: left 0.2s;
+        }
+        .switch-input:checked + .switch-slider {
+            background: #CB2B83;
+            padding: 3px 3px 3px 3px;
+        }
+        .switch-input:checked + .switch-slider::before {
+            left: 20px;
+        }
     </style>
 </head>
 <body>
@@ -108,10 +193,19 @@
         </select>
         <div id="collectionContainer"></div>
     </div>
-    <button id="imageToggle" class="toggle-button">Show Images</button>
     <div id="loadingIndicator" style="display:none; margin: 20px; font-size: 18px; color: #D14D8A;">Loading...</div>
     <div id="errorIndicator" style="display:none; margin: 20px; font-size: 18px; color: #ff4d4f;"></div>
     <div class="app" id="appContainer">
+        <div class="chart-header">
+            <div class="chart-title">Upcoming loans</div>
+            <label class="switch-root">
+                <span class="switch-label">Show Images</span>
+                <span class="switch-container">
+                    <input type="checkbox" id="imageToggle" class="switch-input" />
+                    <span class="switch-slider"></span>
+                </span>
+            </label>
+        </div>
         <div class="chart-wrapper">
             <canvas id="canvas"></canvas>
             <div id="tooltip"></div>
