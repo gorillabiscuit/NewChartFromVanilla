@@ -210,7 +210,10 @@ function drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDI
         const paddedMaxDate = PADDED_MAX_DATE;
         const scale = timeScale([paddedMinDate, paddedMaxDate], [dynamicPaddingX, WIDTH - dynamicPaddingX]);
         const {ticks: dateTicks, format: dateFormat} = niceDateTicks(paddedMinDate, paddedMaxDate, DATE_TICK_COUNT);
-        dateTicks.forEach(date => {
+        let lastLabelX = null;
+        let lastLabelWidth = null;
+        const margin = 8;
+        dateTicks.forEach((date, i) => {
             const x = scale(date.getTime());
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
             ctx.beginPath();
@@ -225,7 +228,28 @@ function drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDI
             ctx.fillStyle = '#B6B1D5';
             ctx.textAlign = 'center';
             const dateStr = dateFormat(date);
-            ctx.fillText(dateStr, x, CHART_HEIGHT + TICK_LENGTH + TICK_PADDING + 10);
+            const labelWidth = ctx.measureText(dateStr).width;
+            let shouldDraw = true;
+            if (lastLabelX !== null) {
+                // Always draw first and last, skip if overlap for others
+                if (i !== 0 && i !== dateTicks.length - 1) {
+                    if (Math.abs(x - lastLabelX) < (labelWidth + lastLabelWidth) / 2 + margin) {
+                        shouldDraw = false;
+                    }
+                }
+                // For last label, if overlap, skip previous and draw this one
+                if (i === dateTicks.length - 1 && lastLabelX !== null) {
+                    if (Math.abs(x - lastLabelX) < (labelWidth + lastLabelWidth) / 2 + margin) {
+                        // Optionally, could clear previous label area, but for now just skip previous
+                        shouldDraw = true;
+                    }
+                }
+            }
+            if (shouldDraw) {
+                ctx.fillText(dateStr, x, CHART_HEIGHT + TICK_LENGTH + TICK_PADDING + 10);
+                lastLabelX = x;
+                lastLabelWidth = labelWidth;
+            }
         });
     }
     
