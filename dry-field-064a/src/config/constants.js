@@ -70,4 +70,34 @@ export const WALLETS = [
     "0xd876f7215aaa80272b52eccdbf30e949eec13292",
     "0x94de7e2c73529ebf3206aa3459e699fbcdfcd49b",
     "0x7a65cd0ad11e7329f534b5b65113997cf75e3546",
-]; 
+];
+
+// Collection Dropdown Constants
+export const COLLECTION_DROPDOWN_WIDTH = 340;
+export const COLLECTION_NAME_MAX_LENGTH = 90;
+export const COLLECTION_DROPDOWN_STYLES = {
+    width: `${COLLECTION_DROPDOWN_WIDTH}px`,
+    textAlign: 'left',
+    fontFamily: 'monospace'
+};
+
+// Collection States
+export const COLLECTION_STATES = {
+    LOADING: 'loading',
+    READY: 'ready',
+    ERROR: 'error',
+    NO_DATA: 'no_data'
+};
+
+// Collection Periods
+export const COLLECTION_PERIODS = [7, 14, 30, 60, 90, 180, 365];
+export const DEFAULT_COLLECTION_PERIOD = 30;
+
+// Collection API Constants
+export const COLLECTION_API_BASE_URL = 'https://sdk-api.nftfi.com/data/v0/pipes/loans_due_endpoint.json';
+export const COLLECTION_API_PARAMS = {
+    page_size: 1000000,
+    page: 0,
+    sort_by: 'secondsUntilDue',
+    sort_order: 'ASC'
+}; 

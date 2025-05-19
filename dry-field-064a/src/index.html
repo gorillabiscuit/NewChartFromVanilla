@@ -106,6 +106,7 @@
             <option value="180">180 days</option>
             <option value="365">365 days</option>
         </select>
+        <div id="collectionContainer"></div>
     </div>
     <button id="imageToggle" class="toggle-button">Show Images</button>
     <div id="loadingIndicator" style="display:none; margin: 20px; font-size: 18px; color: #D14D8A;">Loading...</div>
@@ -132,6 +133,8 @@
     import { logOverlapStats } from './utils/debug.js';
     import { setupMouseInteraction } from './interaction.js';
     import { setupWalletChangeHandler, loadInitialData } from './events/walletManager.js';
+    import { CollectionController } from './controllers/CollectionController.js';
+    import { ChartController } from './controllers/ChartController.js';
     // --- DOM and Canvas Setup ---
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -257,11 +260,38 @@
         MAX_FRAMES
     };
 
-    // Set up wallet change handler
-    setupWalletChangeHandler(walletSelect, allBubbles, clusters, singleBubbles, chartConfig, noDataMessage);
+    // Initialize controllers
+    const chartController = new ChartController(ctx, canvas, tooltip, chartConfig);
+    const collectionController = new CollectionController(
+        document.getElementById('collectionContainer'),
+        chartController
+    );
 
-    // Trigger initial load with image handling
-    loadInitialData(WALLETS[0], allBubbles, clusters, singleBubbles, chartConfig, noDataMessage);
+    // Set up wallet change handler
+    walletSelect.addEventListener('change', async () => {
+        const selectedWallet = walletSelect.value;
+        if (selectedWallet) {
+            await collectionController.reloadAndPopulateCollections(
+                selectedWallet,
+                parseInt(periodSelect.value, 10)
+            );
+        }
+    });
+
+    // Set up period change handler
+    periodSelect.addEventListener('change', async () => {
+        const selectedPeriod = parseInt(periodSelect.value, 10);
+        await collectionController.reloadAndPopulateCollections(
+            walletSelect.value,
+            selectedPeriod
+        );
+    });
+
+    // Initial load
+    collectionController.reloadAndPopulateCollections(
+        walletSelect.value,
+        parseInt(periodSelect.value, 10)
+    );
 
     // --- Mouse Handling ---
     const canvasEventManager = setupMouseInteraction(canvas, clusters, tooltip, WIDTH, HEIGHT);
@@ -340,31 +370,6 @@
             noDataMessage.style.display = 'none';
             canvas.style.display = 'block';
         }
-    });
-
-    // Period dropdown logic
-    const periodSelect = document.getElementById('periodSelect');
-    let selectedPeriod = parseInt(periodSelect.value, 10);
-    let selectedWallet = walletSelect.value;
-
-    // ChartController instance
-    import('./controllers/ChartController.js').then(({ ChartController }) => {
-        const chartController = new ChartController(ctx, canvas, tooltip, chartConfig);
-
-        // Handle wallet change
-        walletSelect.addEventListener('change', () => {
-            selectedWallet = walletSelect.value;
-            chartController.loadLoans(selectedWallet, selectedPeriod);
-        });
-
-        // Handle period change
-        periodSelect.addEventListener('change', () => {
-            selectedPeriod = parseInt(periodSelect.value, 10);
-            chartController.loadLoans(selectedWallet, selectedPeriod);
-        });
-
-        // Initial load
-        chartController.loadLoans(selectedWallet, selectedPeriod);
     });
     </script>
 </body>

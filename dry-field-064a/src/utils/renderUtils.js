@@ -165,19 +165,15 @@ function drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDI
     ctx.save();
     ctx.lineWidth = 1;
     let dynamicPaddingX = CHART_PADDING_X;
-    // Dynamically calculate left padding for Y-axis labels
-    if (allBubbles.length > 0) {
+
+    // Draw Y axis APR ticks, grid lines, and labels (D3-inspired)
+    if (allBubbles && allBubbles.length > 0) {
         const loans = allBubbles;
         const minAPR = Math.min(...loans.map(l => l.apr));
         const maxAPR = Math.max(...loans.map(l => l.apr));
         const labelWidth = getMaxYLabelWidth(ctx, minAPR, maxAPR);
         dynamicPaddingX = Math.max(CHART_PADDING_X, Math.ceil(labelWidth + 16)); // 16px margin
-    }
-    // Draw Y axis APR ticks, grid lines, and labels (D3-inspired)
-    if (allBubbles.length > 0) {
-        const loans = allBubbles;
-        const minAPR = Math.min(...loans.map(l => l.apr));
-        const maxAPR = Math.max(...loans.map(l => l.apr));
+
         let aprTicks = niceLinearTicks(minAPR, maxAPR, 8);
         if (aprTicks.length > 1) aprTicks = aprTicks.slice(1);
         aprTicks = aprTicks.filter(tick => Number.isInteger(tick));
@@ -205,7 +201,7 @@ function drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDI
     }
     
     // Draw X axis date ticks and grid lines (D3-inspired)
-    if (allBubbles.length > 0 && PADDED_MIN_DATE !== null && PADDED_MAX_DATE !== null) {
+    if (PADDED_MIN_DATE !== null && PADDED_MAX_DATE !== null) {
         const paddedMinDate = PADDED_MIN_DATE;
         const paddedMaxDate = PADDED_MAX_DATE;
         const scale = timeScale([paddedMinDate, paddedMaxDate], [dynamicPaddingX, WIDTH - dynamicPaddingX]);
@@ -240,7 +236,6 @@ function drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDI
                 // For last label, if overlap, skip previous and draw this one
                 if (i === dateTicks.length - 1 && lastLabelX !== null) {
                     if (Math.abs(x - lastLabelX) < (labelWidth + lastLabelWidth) / 2 + margin) {
-                        // Optionally, could clear previous label area, but for now just skip previous
                         shouldDraw = true;
                     }
                 }
