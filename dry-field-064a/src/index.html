@@ -51,19 +51,19 @@
             background-size: 18px 18px;
         }
         #viewWalletBtn {
-            flex: 0 0 120px; /* Fixed width of 120px, don't grow or shrink */
+            flex: 0 0 120px;
         }
         #walletSelect {
-            flex: 1.5; /* Slightly larger than other dropdowns */
+            flex: 1.2;
         }
         #periodSelect {
-            flex: 0.8; /* Slightly smaller than other dropdowns */
+            flex: 0.8;
         }
-        #collectionContainer, #protocolContainer {
-            flex: 1.2; /* Equal flex for collection and protocol dropdowns */
-            min-width: 0; /* Allows containers to shrink */
+        #collectionContainer, #protocolContainer, #currencyContainer {
+            flex: 1.1;
+            min-width: 0;
         }
-        #collectionContainer select, #protocolContainer select {
+        #collectionContainer select, #protocolContainer select, #currencyContainer select {
             width: 100%;
         }
         .app {
@@ -233,6 +233,7 @@
         </select>
         <div id="collectionContainer"></div>
         <div id="protocolContainer"></div>
+        <div id="currencyContainer"></div>
     </div>
     <div id="walletErrorMsg" style="display: none; color: #CB2B83; font-size: 12px; margin-top: 2px; min-height: 16px; margin-left: 120px;">invalid erc-20 address</div>
     <div id="errorIndicator" style="display:none; margin: 20px; font-size: 18px; color: #ff4d4f;"></div>

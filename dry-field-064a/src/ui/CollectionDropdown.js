@@ -172,4 +172,205 @@ export class CollectionDropdown {
             this.lastSelectedCollection = '';
         }
     }
+}
+
+export class ProtocolDropdown {
+    constructor(container) {
+        this.container = container;
+        this.select = null;
+        this.currentLoans = [];
+        this.lastSelectedProtocol = '';
+        this.initialize();
+    }
+
+    initialize() {
+        this.select = document.createElement('select');
+        this.select.id = 'protocolSelect';
+        this.select.className = 'wallet-selector';
+        // Reuse collection dropdown styles
+        Object.assign(this.select.style, COLLECTION_DROPDOWN_STYLES);
+        this.container.appendChild(this.select);
+    }
+
+    populate(loans) {
+        if (!this.select) return;
+        // Aggregate by protocol
+        const protocolMap = {};
+        for (const loan of loans) {
+            const name = loan.protocolName || 'Unknown Protocol';
+            if (!protocolMap[name]) {
+                protocolMap[name] = { name, count: 0, enabled: false };
+            }
+            protocolMap[name].count += 1;
+            protocolMap[name].enabled = true;
+        }
+        // If lastSelectedProtocol is not in the new data, add it as disabled
+        if (this.lastSelectedProtocol && !protocolMap[this.lastSelectedProtocol]) {
+            protocolMap[this.lastSelectedProtocol] = {
+                name: this.lastSelectedProtocol,
+                count: 0,
+                enabled: false
+            };
+        }
+        const protocols = Object.values(protocolMap).sort((a, b) => b.count - a.count);
+        // Clear and add 'All Protocols'
+        this.select.innerHTML = '';
+        const allOption = document.createElement('option');
+        allOption.value = '';
+        allOption.textContent = 'All Protocols';
+        allOption.selected = !this.lastSelectedProtocol;
+        this.select.appendChild(allOption);
+        let foundEnabled = false;
+        for (const { name, count, enabled } of protocols) {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = `${name} (${count})`;
+            option.disabled = !enabled;
+            if (name === this.lastSelectedProtocol && enabled) {
+                option.selected = true;
+                foundEnabled = true;
+            }
+            this.select.appendChild(option);
+        }
+        if (this.lastSelectedProtocol && !foundEnabled) {
+            this.select.value = '';
+        }
+        this.currentLoans = loans;
+    }
+
+    getSelectedProtocol() {
+        return this.select ? this.select.value : '';
+    }
+
+    setSelectedProtocol(protocol) {
+        if (this.select) {
+            this.lastSelectedProtocol = protocol;
+            this.select.value = protocol;
+        }
+    }
+
+    onChange(callback) {
+        if (this.select) {
+            this.select.addEventListener('change', (e) => {
+                this.lastSelectedProtocol = e.target.value;
+                callback(e.target.value);
+            });
+        }
+    }
+
+    getFilteredLoans() {
+        const selectedProtocol = this.getSelectedProtocol();
+        if (!selectedProtocol) {
+            return this.currentLoans;
+        }
+        return this.currentLoans.filter(loan => (loan.protocolName || 'Unknown Protocol') === selectedProtocol);
+    }
+
+    clear() {
+        if (this.select) {
+            this.select.innerHTML = '';
+            this.currentLoans = [];
+            this.lastSelectedProtocol = '';
+        }
+    }
+}
+
+export class CurrencyDropdown {
+    constructor(container) {
+        this.container = container;
+        this.select = null;
+        this.currentLoans = [];
+        this.lastSelectedCurrency = '';
+        this.initialize();
+    }
+
+    initialize() {
+        this.select = document.createElement('select');
+        this.select.id = 'currencySelect';
+        this.select.className = 'wallet-selector';
+        Object.assign(this.select.style, COLLECTION_DROPDOWN_STYLES);
+        this.container.appendChild(this.select);
+    }
+
+    populate(loans) {
+        if (!this.select) return;
+        // Aggregate by currency
+        const currencyMap = {};
+        for (const loan of loans) {
+            const name = loan.currencyName || 'Unknown Currency';
+            if (!currencyMap[name]) {
+                currencyMap[name] = { name, count: 0, enabled: false };
+            }
+            currencyMap[name].count += 1;
+            currencyMap[name].enabled = true;
+        }
+        // If lastSelectedCurrency is not in the new data, add it as disabled
+        if (this.lastSelectedCurrency && !currencyMap[this.lastSelectedCurrency]) {
+            currencyMap[this.lastSelectedCurrency] = {
+                name: this.lastSelectedCurrency,
+                count: 0,
+                enabled: false
+            };
+        }
+        const currencies = Object.values(currencyMap).sort((a, b) => b.count - a.count);
+        // Clear and add 'All Currencies'
+        this.select.innerHTML = '';
+        const allOption = document.createElement('option');
+        allOption.value = '';
+        allOption.textContent = 'All Currencies';
+        allOption.selected = !this.lastSelectedCurrency;
+        this.select.appendChild(allOption);
+        let foundEnabled = false;
+        for (const { name, count, enabled } of currencies) {
+            const option = document.createElement('option');
+            option.value = name;
+            option.textContent = `${name} (${count})`;
+            option.disabled = !enabled;
+            if (name === this.lastSelectedCurrency && enabled) {
+                option.selected = true;
+                foundEnabled = true;
+            }
+            this.select.appendChild(option);
+        }
+        if (this.lastSelectedCurrency && !foundEnabled) {
+            this.select.value = '';
+        }
+        this.currentLoans = loans;
+    }
+
+    getSelectedCurrency() {
+        return this.select ? this.select.value : '';
+    }
+
+    setSelectedCurrency(currency) {
+        if (this.select) {
+            this.lastSelectedCurrency = currency;
+            this.select.value = currency;
+        }
+    }
+
+    onChange(callback) {
+        if (this.select) {
+            this.select.addEventListener('change', (e) => {
+                this.lastSelectedCurrency = e.target.value;
+                callback(e.target.value);
+            });
+        }
+    }
+
+    getFilteredLoans() {
+        const selectedCurrency = this.getSelectedCurrency();
+        if (!selectedCurrency) {
+            return this.currentLoans;
+        }
+        return this.currentLoans.filter(loan => (loan.currencyName || 'Unknown Currency') === selectedCurrency);
+    }
+
+    clear() {
+        if (this.select) {
+            this.select.innerHTML = '';
+            this.currentLoans = [];
+            this.lastSelectedCurrency = '';
+        }
+    }
 } 
