@@ -183,7 +183,7 @@
             <option value="">Select a wallet...</option>
         </select>
         <input id="customWalletInput" type="text" placeholder="Enter wallet address" style="height: 32px; width: 260px; border-radius: 8px; border: 1px solid #332C4B; background: #221E37; color: #B6B1D5; font-size: 14px; padding: 0 12px; outline: none;" />
-        <button id="viewWalletBtn" style="height: 32px; border-radius: 8px; background: #332C4B; color: #B6B1D5; border: 1px solid rgba(255,255,255,0.2); font-size: 14px; padding: 0 16px; cursor: pointer; transition: background 0.2s;" disabled>View Wallet</button>
+        <button id="viewWalletBtn" style="height: 32px; border-radius: 8px; font-size: 14px; padding: 0 16px; cursor: pointer; transition: background 0.2s;" disabled>View Wallet</button>
         <select id="periodSelect" class="wallet-selector" style="width: 120px;">
             <option value="7">7 days</option>
             <option value="14">14 days</option>
@@ -213,6 +213,7 @@
             <div id="chartOverlayMessage" class="centered-message" style="display:none;"></div>
             <div id="tooltip"></div>
         </div>
+        <div id="protocolLegend" class="protocol-legend"></div>
     </div>
     <script type="module">
     import { createLoanBubbleFromAPI, useLoanDataForBubbles, findClusters, getPercentile } from './data/clusterUtils.js';
@@ -308,6 +309,14 @@
         console.log('[UI] Custom wallet input triggered:', customWallet);
         // Set the dropdown to blank to indicate custom
         walletSelect.value = '';
+        // Show 'Loading new wallet' overlay and clear chart
+        const overlayMsg = document.getElementById('chartOverlayMessage');
+        if (overlayMsg) {
+            overlayMsg.textContent = 'Loading new wallet...';
+            overlayMsg.style.display = 'flex';
+        }
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         // Load loans for the custom wallet
         await collectionController.reloadAndPopulateCollections(
             customWallet,
@@ -382,6 +391,17 @@
         console.log('[UI] Wallet dropdown changed:', walletSelect.value);
         const selectedWallet = walletSelect.value;
         const periodSelect = document.getElementById('periodSelect');
+        // Clear the custom wallet input field
+        const customWalletInput = document.getElementById('customWalletInput');
+        if (customWalletInput) customWalletInput.value = '';
+        // Show 'Loading new wallet' overlay and clear chart
+        const overlayMsg = document.getElementById('chartOverlayMessage');
+        if (overlayMsg) {
+            overlayMsg.textContent = 'Loading new wallet...';
+            overlayMsg.style.display = 'flex';
+        }
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
         // Reuse the showNoLoansMessage from uiManager.js
         let noLoansMsg = document.getElementById('noLoansMessage');
         const chartWrapper = document.querySelector('.chart-wrapper');
@@ -473,11 +493,9 @@
         if (overlayMsg) {
             if (newState.status === 'loading') {
                 overlayMsg.textContent = 'Loading...';
-                overlayMsg.classList.add('white');
                 overlayMsg.style.display = 'flex';
             } else if (newState.status === 'no_data' || (newState.status === 'error' && (newState.error === 'No loans found for this wallet.' || newState.error === 'No loans found for this period.'))) {
                 overlayMsg.textContent = 'This wallet contains no loans.';
-                overlayMsg.classList.remove('white');
                 overlayMsg.style.display = 'flex';
             } else {
                 overlayMsg.style.display = 'none';
@@ -521,6 +539,19 @@
             canvas.style.display = 'block';
         }
     });
+
+    function renderProtocolLegend() {
+        const legendDiv = document.getElementById('protocolLegend');
+        if (!legendDiv) return;
+        const protocols = Object.entries(PROTOCOL_COLORS);
+        legendDiv.innerHTML = protocols.map(([name, color]) => `
+            <span class="legend-item">
+                <span class="legend-color" style="background:${color}"></span>
+                <span class="legend-label">${name}</span>
+            </span>
+        `).join('');
+    }
+    renderProtocolLegend();
     </script>
 </body>
 </html> 
