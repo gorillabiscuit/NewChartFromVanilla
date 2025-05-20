@@ -182,6 +182,8 @@
         <select id="walletSelect" class="wallet-selector">
             <option value="">Select a wallet...</option>
         </select>
+        <input id="customWalletInput" type="text" placeholder="Enter wallet address" style="height: 32px; width: 260px; border-radius: 8px; border: 1px solid #332C4B; background: #221E37; color: #B6B1D5; font-size: 14px; padding: 0 12px; outline: none;" />
+        <button id="viewWalletBtn" style="height: 32px; border-radius: 8px; background: #332C4B; color: #B6B1D5; border: 1px solid rgba(255,255,255,0.2); font-size: 14px; padding: 0 16px; cursor: pointer; transition: background 0.2s;" disabled>View Wallet</button>
         <select id="periodSelect" class="wallet-selector" style="width: 120px;">
             <option value="7">7 days</option>
             <option value="14">14 days</option>
@@ -193,6 +195,7 @@
         </select>
         <div id="collectionContainer"></div>
     </div>
+    <div id="walletErrorMsg" style="display: none; color: #CB2B83; font-size: 12px; margin-top: 2px; min-height: 16px; margin-left: 120px;">invalid erc-20 address</div>
     <div id="loadingIndicator" style="display:none; margin: 20px; font-size: 18px; color: #D14D8A;">Loading...</div>
     <div id="errorIndicator" style="display:none; margin: 20px; font-size: 18px; color: #ff4d4f;"></div>
     <div class="app" id="appContainer">
@@ -220,13 +223,13 @@
     import { updateTooltip, initializeTooltip, setupTooltipStyles } from './ui/uiComponents.js';
     import { fetchLoanData, loadBubbleImages } from './data/dataService.js';
     import { packClusterBubbles, animateClusterToPacked, updateClusterAnimation } from './utils/clusterLayout.js';
-    import { createNoDataMessage, setupWalletDropdown, setupImageToggle, setupResponsiveCanvas } from './ui/uiManager.js';
+    import { createNoDataMessage, setupWalletDropdown, setupImageToggle, setupResponsiveCanvas, setupWalletChangeHandler, setupCustomWalletInput } from './ui/uiManager.js';
     import EventManager from './event/EventManager.js';
     import { animate } from './animation.js';
     import { state, clearChart, subscribe, dispatch } from './state/state.js';
     import { logOverlapStats } from './utils/debug.js';
     import { setupMouseInteraction } from './interaction.js';
-    import { setupWalletChangeHandler, loadInitialData } from './events/walletManager.js';
+    import { loadInitialData } from './events/walletManager.js';
     import { CollectionController } from './controllers/CollectionController.js';
     import { ChartController } from './controllers/ChartController.js';
     // --- DOM and Canvas Setup ---
@@ -300,6 +303,19 @@
     const walletSelect = document.getElementById('walletSelect');
     setupWalletDropdown(walletSelect, WALLETS);
 
+    // Set up custom wallet input
+    setupCustomWalletInput(async (customWallet) => {
+        console.log('[UI] Custom wallet input triggered:', customWallet);
+        // Set the dropdown to blank to indicate custom
+        walletSelect.value = '';
+        // Load loans for the custom wallet
+        await collectionController.reloadAndPopulateCollections(
+            customWallet,
+            parseInt(periodSelect.value, 10)
+        );
+        console.log('[UI] Custom wallet load complete');
+    });
+
     // Set up image toggle
     setupImageToggle(imageToggle);
 
@@ -363,17 +379,47 @@
 
     // Set up wallet change handler
     walletSelect.addEventListener('change', async () => {
+        console.log('[UI] Wallet dropdown changed:', walletSelect.value);
         const selectedWallet = walletSelect.value;
+        const periodSelect = document.getElementById('periodSelect');
+        // Reuse the showNoLoansMessage from uiManager.js
+        let noLoansMsg = document.getElementById('noLoansMessage');
+        const chartWrapper = document.querySelector('.chart-wrapper');
+        if (!noLoansMsg && chartWrapper) {
+            noLoansMsg = document.createElement('div');
+            noLoansMsg.id = 'noLoansMessage';
+            noLoansMsg.className = 'centered-message';
+            noLoansMsg.style.display = 'none';
+            chartWrapper.appendChild(noLoansMsg);
+        }
+        function showNoLoansMessage(show, text) {
+            if (!noLoansMsg) return;
+            if (show) {
+                noLoansMsg.textContent = text || 'This wallet contains no loans.';
+                noLoansMsg.style.display = 'flex';
+            } else {
+                noLoansMsg.style.display = 'none';
+            }
+        }
         if (selectedWallet) {
-            await collectionController.reloadAndPopulateCollections(
+            const { loadWalletWithFallback } = await import('./ui/uiManager.js');
+            await loadWalletWithFallback(
                 selectedWallet,
-                parseInt(periodSelect.value, 10)
+                async (wallet) => {
+                    await collectionController.reloadAndPopulateCollections(
+                        wallet,
+                        parseInt(periodSelect.value, 10)
+                    );
+                },
+                periodSelect,
+                showNoLoansMessage
             );
         }
     });
 
     // Set up period change handler
     periodSelect.addEventListener('change', async () => {
+        console.log('[UI] Period dropdown changed:', periodSelect.value);
         const selectedPeriod = parseInt(periodSelect.value, 10);
         await collectionController.reloadAndPopulateCollections(
             walletSelect.value,
@@ -392,6 +438,7 @@
 
     // Subscribe to state changes for UI updates
     subscribe((newState) => {
+        console.log('[STATE] Status:', newState.status, '| Bubbles:', (newState.allBubbles || []).length);
         // Update chart
         draw(
             ctx, 

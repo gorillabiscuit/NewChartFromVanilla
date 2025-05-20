@@ -110,6 +110,7 @@ export class ChartController {
     }
 
     async loadLoans(wallet, period = 30) {
+        console.log('[ChartController] loadLoans called:', wallet, period);
         if (this.isTransitioning) {
             this.pendingStateUpdate = { wallet, period };
             return;
@@ -138,6 +139,7 @@ export class ChartController {
         try {
             // 4. Fetch new data
             const data = await fetchLoanData(wallet, period);
+            console.log('[ChartController] API response:', data);
             
             // 5. Update state atomically if still current version
             if (this.stateVersion === currentVersion && data && data.data && data.data.length > 0) {
@@ -196,6 +198,7 @@ export class ChartController {
                 });
             }
         } catch (error) {
+            console.error('[ChartController] Error loading loans:', error);
             if (this.stateVersion === currentVersion) {
                 dispatch({ type: 'SET_STATUS', payload: 'error' });
                 dispatch({ type: 'SET_ERROR', payload: error.message || 'Failed to fetch data' });
@@ -227,7 +230,9 @@ export class ChartController {
      * @param {number} maxUSD - Maximum USD value for scaling
      */
     async updateWithFilteredLoans(filteredLoans, minUSD, maxUSD) {
+        console.log('[ChartController] updateWithFilteredLoans called. Loans:', filteredLoans ? filteredLoans.length : 0);
         if (this.isTransitioning) {
+            console.log('[ChartController] Skipping update due to transition in progress');
             return;
         }
 
@@ -244,6 +249,7 @@ export class ChartController {
         dispatch({ type: 'SET_ERROR', payload: null });
         dispatch({ type: 'INCREMENT_IMAGE_LOAD_GENERATION' });
         dispatch({ type: 'CLEAR_BUBBLES' });
+        dispatch({ type: 'CLEAR_CUSTOM_RANGES' }); // Clear any existing custom ranges
 
         // Defensive: Clear canvas only if available
         if (this.canvas && this.ctx) {
@@ -251,14 +257,18 @@ export class ChartController {
         }
 
         try {
+            console.log('[ChartController] Processing filtered loans:', filteredLoans.length);
             // Process filtered data
             const newAllBubbles = [];
             const newClusters = [];
             const newSingleBubbles = [];
             const showImages = getState().showImages;
+            const currentWallet = getState().currentWallet;
+            const isAllLoansMode = currentWallet === '__ALL__';
 
             // Handle single loan case
             if (filteredLoans.length === 1) {
+                console.log('[ChartController] Processing single loan case');
                 const loan = filteredLoans[0];
                 const loanDate = new Date(loan.dueDate);
                 
@@ -266,21 +276,21 @@ export class ChartController {
                 const minDate = new Date(loanDate.getTime() - 12 * 60 * 60 * 1000); // 12 hours before
                 const maxDate = new Date(loanDate.getTime() + 12 * 60 * 60 * 1000); // 12 hours after
                 
-                // Set the date range for the chart
-                this.config.PADDED_MIN_DATE = minDate;
-                this.config.PADDED_MAX_DATE = maxDate;
-                dispatch({ type: 'SET_DATE_RANGE', payload: { min: minDate, max: maxDate } });
-
-                // Adjust APR range to be 1 percentage point around the loan's APR
+                // Set custom ranges in state
                 const loanAPR = loan.apr || 0;
                 const minAPR = Math.floor(loanAPR); // Round down to nearest integer
                 const maxAPR = minAPR + 1; // One percentage point above
 
-                // Update the config with adjusted ranges
-                this.config.MIN_APR = minAPR;
-                this.config.MAX_APR = maxAPR;
+                dispatch({
+                    type: 'SET_CUSTOM_RANGES',
+                    payload: {
+                        dateRange: { min: minDate, max: maxDate },
+                        aprRange: { min: minAPR, max: maxAPR }
+                    }
+                });
             }
 
+            console.log('[ChartController] Creating bubbles from loan data');
             const bubblesResult = useLoanDataForBubbles(
                 filteredLoans,
                 newAllBubbles,
@@ -292,7 +302,7 @@ export class ChartController {
                     }
                 },
                 (bubbles) => this.config.findClusters(bubbles, newClusters, newSingleBubbles, this.config.bubblesOverlap, this.config.VELOCITY_POWER, this.config.BASE_VELOCITY),
-                (loan, ...bubbleArgs) => this.config.createLoanBubbleFromAPI(loan, ...bubbleArgs, false, showImages),
+                (loan, ...bubbleArgs) => this.config.createLoanBubbleFromAPI(loan, ...bubbleArgs, isAllLoansMode, showImages),
                 (min, max) => {
                     // Only update date range if not handling single loan case
                     if (filteredLoans.length !== 1) {
@@ -308,12 +318,19 @@ export class ChartController {
                 this.config.CHART_PADDING_TOP,
                 this.config.CHART_HEIGHT,
                 this.config.BUBBLE_PADDING_FACTOR,
-                false,
+                isAllLoansMode,
                 showImages
             );
 
+            console.log('[ChartController] Bubbles created:', {
+                allBubbles: newAllBubbles.length,
+                clusters: newClusters.length,
+                singleBubbles: newSingleBubbles.length
+            });
+
             // Update state with new bubbles
             if (this.stateVersion === currentVersion) {
+                console.log('[ChartController] Updating state with new bubbles');
                 dispatch({
                     type: 'SET_BUBBLES',
                     payload: {
@@ -322,9 +339,34 @@ export class ChartController {
                         singleBubbles: [...newSingleBubbles]
                     }
                 });
+                
+                // Force a redraw
+                if (this.canvas && this.ctx) {
+                    console.log('[ChartController] Forcing canvas redraw');
+                    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                    draw(
+                        this.ctx,
+                        this.config.WIDTH,
+                        this.config.HEIGHT,
+                        this.config.CHART_HEIGHT,
+                        this.config.CHART_PADDING_X,
+                        this.config.CHART_PADDING_TOP,
+                        newSingleBubbles,
+                        newClusters,
+                        showImages,
+                        this.config.PROTOCOL_COLORS,
+                        this.config.DEFAULT_PROTOCOL_COLOR,
+                        newAllBubbles,
+                        this.config.PADDED_MIN_DATE,
+                        this.config.PADDED_MAX_DATE
+                    );
+                }
+                
                 dispatch({ type: 'SET_STATUS', payload: 'ready' });
+                console.log('[ChartController] State updated with new bubbles and chart redrawn');
             }
         } catch (error) {
+            console.error('[ChartController] Error updating chart:', error);
             if (this.stateVersion === currentVersion) {
                 dispatch({ type: 'SET_STATUS', payload: 'error' });
                 dispatch({ type: 'SET_ERROR', payload: error.message || 'Failed to update chart' });
@@ -332,6 +374,7 @@ export class ChartController {
         } finally {
             // End transition
             this.isTransitioning = false;
+            console.log('[ChartController] Update complete');
         }
     }
 } 

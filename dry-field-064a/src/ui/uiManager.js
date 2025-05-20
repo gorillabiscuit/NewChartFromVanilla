@@ -153,10 +153,95 @@ function setupWalletChangeHandler(walletSelect, onWalletChange) {
     return eventManager;
 }
 
+/**
+ * Shared wallet loading logic: tries 365 days, shows message if no loans, else loads and sets period.
+ * @param {string} walletAddress
+ * @param {Function} onWalletSelected
+ * @param {HTMLElement} periodSelect
+ * @param {Function} showNoLoansMessage
+ */
+async function loadWalletWithFallback(walletAddress, onWalletSelected, periodSelect, showNoLoansMessage) {
+    const { CollectionService } = await import('../services/CollectionService.js');
+    const loans = await CollectionService.fetchLoans(walletAddress, 365);
+    if (loans && loans.length > 0) {
+        periodSelect.value = '365';
+        showNoLoansMessage(false);
+        await onWalletSelected(walletAddress);
+    } else {
+        showNoLoansMessage(true, 'This wallet contains no loans.');
+        // Clear chart state and canvas
+        const { dispatch } = await import('../state/state.js');
+        dispatch({ type: 'CLEAR_BUBBLES' });
+        const canvas = document.getElementById('canvas');
+        if (canvas && canvas.getContext) {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+    }
+}
+
+function setupCustomWalletInput(onWalletSelected) {
+    const input = document.getElementById('customWalletInput');
+    const button = document.getElementById('viewWalletBtn');
+    const errorMsg = document.getElementById('walletErrorMsg');
+    const walletRegex = /^0x[a-fA-F0-9]{40}$/;
+    const periodSelect = document.getElementById('periodSelect');
+    const chartWrapper = document.querySelector('.chart-wrapper');
+    let noLoansMsg = document.getElementById('noLoansMessage');
+    if (!noLoansMsg && chartWrapper) {
+        noLoansMsg = document.createElement('div');
+        noLoansMsg.id = 'noLoansMessage';
+        noLoansMsg.className = 'centered-message';
+        noLoansMsg.style.display = 'none';
+        chartWrapper.appendChild(noLoansMsg);
+    }
+
+    function showNoLoansMessage(show, text) {
+        if (!noLoansMsg) return;
+        if (show) {
+            noLoansMsg.textContent = text || 'This wallet contains no loans.';
+            noLoansMsg.style.display = 'flex';
+        } else {
+            noLoansMsg.style.display = 'none';
+        }
+    }
+
+    function validate() {
+        const value = input.value.trim();
+        if (value === '') {
+            input.style.border = '1px solid #332C4B';
+            errorMsg.style.display = 'none';
+            button.disabled = true;
+            return false;
+        }
+        if (!walletRegex.test(value)) {
+            input.style.border = '1.5px solid #CB2B83';
+            errorMsg.style.display = 'block';
+            button.disabled = true;
+            return false;
+        } else {
+            input.style.border = '1px solid #332C4B';
+            errorMsg.style.display = 'none';
+            button.disabled = false;
+            return true;
+        }
+    }
+
+    input.addEventListener('input', validate);
+    input.addEventListener('blur', validate);
+    button.addEventListener('click', async () => {
+        if (validate()) {
+            await loadWalletWithFallback(input.value.trim(), onWalletSelected, periodSelect, showNoLoansMessage);
+        }
+    });
+}
+
 export { 
     createNoDataMessage,
     setupWalletDropdown,
     setupImageToggle,
     setupResponsiveCanvas,
-    setupWalletChangeHandler
+    setupWalletChangeHandler,
+    setupCustomWalletInput,
+    loadWalletWithFallback
 };

@@ -5,13 +5,12 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "dry-field-064a",
-	"main": "public/index.js",
+	"pages_build_output_dir": "src",
+	"pages_project_name": "dry-field-064a",
 	"compatibility_date": "2025-05-07",
 	"observability": {
 		"enabled": true
-	},
-	"assets": { "directory": "./public/", "binding": "STATIC_ASSETS" },
-	"pages_build_output_dir": "public"
+	}
 	/**
 	 * Smart Placement
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

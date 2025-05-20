@@ -46,6 +46,9 @@
  * @property {number} lastUpdateTime
  * @property {Set<string>} pendingVisualUpdates
  * @property {boolean} isUpdating
+ * @property {boolean} useCustomRanges
+ * @property {Date|null} customDateRange
+ * @property {Date|null} customAprRange
  */
 
 const initialState = {
@@ -71,7 +74,10 @@ const initialState = {
     imageLoadGeneration: 0,
     lastUpdateTime: 0,
     pendingVisualUpdates: new Set(),
-    isUpdating: false
+    isUpdating: false,
+    useCustomRanges: false,
+    customDateRange: null,
+    customAprRange: null,
 };
 
 /** @type {AppState} */
@@ -223,6 +229,20 @@ function applyUpdate(action) {
             state.imageLoadGeneration += 1;
             scheduleVisualUpdate('initialRender');
             break;
+        case 'SET_CUSTOM_RANGES':
+            return {
+                ...state,
+                useCustomRanges: true,
+                customDateRange: action.payload.dateRange,
+                customAprRange: action.payload.aprRange
+            };
+        case 'CLEAR_CUSTOM_RANGES':
+            return {
+                ...state,
+                useCustomRanges: false,
+                customDateRange: null,
+                customAprRange: null
+            };
         default:
             console.warn(`Unknown action type: ${action.type}`);
             break;

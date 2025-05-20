@@ -20,6 +20,7 @@
  */
 
 import { bubblesOverlap } from './bubbleUtils.js';
+import { ALL_LOANS_RADIUS, SINGLE_WALLET_RADIUS } from '../config/constants.js';
 
 /**
  * Purpose: Provides functions for transforming and clustering blockchain loan data for visualization.
@@ -105,23 +106,18 @@ function createLoanBubbleFromAPI(loan, minAPR, maxAPR, minDue, maxDue, minUSD, m
     x += (Math.random() - 0.5) * 10;
     y += (Math.random() - 0.5) * 10;
     
-    // Set min and max radius based on whether we're viewing all loans or a single wallet
-    let minR, maxR;
-    if (isAllLoansMode) {
-        minR = 4;  // Smaller bubbles for all loans view
-        maxR = 16;
-    } else {
-        minR = 10; // Larger bubbles for single wallet view
-        maxR = 40;
-    }
+    // Get radius constants based on mode
+    const { min: minR, max: maxR } = isAllLoansMode ? ALL_LOANS_RADIUS : SINGLE_WALLET_RADIUS;
     
     // Calculate bubble size based on loan amount, clip for visual only
-    const minArea = Math.PI * minR * minR;
-    const maxArea = Math.PI * maxR * maxR;
     let clippedUSD = loan.principalAmountUSD;
     if (isAllLoansMode) {
         clippedUSD = Math.max(minUSD, Math.min(maxUSD, loan.principalAmountUSD));
     }
+    
+    // Calculate area based on loan amount
+    const minArea = Math.PI * minR * minR;
+    const maxArea = Math.PI * maxR * maxR;
     const valueNorm = ((clippedUSD - minUSD) / ((maxUSD - minUSD) || 1));
     const area = minArea + valueNorm * (maxArea - minArea);
     let r = Math.sqrt(area / Math.PI);

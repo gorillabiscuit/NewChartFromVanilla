@@ -20,6 +20,8 @@
  * - UI updates
  */
 
+import { dispatch } from '../state/state.js';
+
 /**
  * Data Service Module - Handles API calls and data fetching
  */
@@ -62,7 +64,21 @@ function loadBubbleImages(bubbles, onProgress, onComplete) {
     const totalBubbles = bubbles.length;
     let loadedImages = 0;
     
-    bubbles.forEach(bubble => {
+    // Sort bubbles by due time
+    const sortedBubbles = [...bubbles].sort((a, b) => {
+        const dateA = new Date(a.dueTime).getTime();
+        const dateB = new Date(b.dueTime).getTime();
+        return dateA - dateB;
+    });
+
+    // Load images sequentially
+    async function loadNextImage(index) {
+        if (index >= sortedBubbles.length) {
+            if (onComplete) onComplete(loadedImages);
+            return;
+        }
+
+        const bubble = sortedBubbles[index];
         if (!bubble.img && bubble.imageUrl) {
             bubble.img = new Image();
             bubble.img.crossOrigin = "Anonymous";
@@ -70,9 +86,10 @@ function loadBubbleImages(bubbles, onProgress, onComplete) {
             bubble.img.onload = () => {
                 loadedImages++;
                 if (onProgress) onProgress(loadedImages, totalBubbles);
-                if (loadedImages >= totalBubbles && onComplete) {
-                    onComplete(loadedImages);
-                }
+                // Force a redraw to show the newly loaded image
+                dispatch({ type: 'SET_STATUS', payload: 'ready' });
+                // Load next image after a short delay
+                setTimeout(() => loadNextImage(index + 1), 50);
             };
             
             bubble.img.onerror = (e) => {
@@ -82,29 +99,26 @@ function loadBubbleImages(bubbles, onProgress, onComplete) {
                 } else {
                     loadedImages++;
                     if (onProgress) onProgress(loadedImages, totalBubbles);
-                    if (loadedImages >= totalBubbles && onComplete) {
-                        onComplete(loadedImages);
-                    }
+                    // Force a redraw even for failed images
+                    dispatch({ type: 'SET_STATUS', payload: 'ready' });
+                    // Load next image after a short delay
+                    setTimeout(() => loadNextImage(index + 1), 50);
                 }
             };
             
             bubble.img.src = bubble.imageUrl;
-        } else if (bubble.img) {
-            if (bubble.img.complete && bubble.img.naturalWidth > 0) {
-                loadedImages++;
-                if (onProgress) onProgress(loadedImages, totalBubbles);
-                if (loadedImages >= totalBubbles && onComplete) {
-                    onComplete(loadedImages);
-                }
-            }
         } else {
             loadedImages++;
             if (onProgress) onProgress(loadedImages, totalBubbles);
-            if (loadedImages >= totalBubbles && onComplete) {
-                onComplete(loadedImages);
-            }
+            // Force a redraw for already loaded images
+            dispatch({ type: 'SET_STATUS', payload: 'ready' });
+            // Load next image after a short delay
+            setTimeout(() => loadNextImage(index + 1), 50);
         }
-    });
+    }
+
+    // Start loading from the first bubble
+    loadNextImage(0);
 }
 
 export { fetchLoanData, loadBubbleImages };

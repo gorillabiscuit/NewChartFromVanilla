@@ -22,6 +22,16 @@ export const BASE_DAMPING = 0.75;
 export const EXTRA_DAMPING = 0.15;
 export const DAMPING_CLUSTER_THRESHOLD = 6;
 
+// Bubble Radius Constants
+export const ALL_LOANS_RADIUS = {
+    min: 3,
+    max: 20
+};
+export const SINGLE_WALLET_RADIUS = {
+    min: 10,
+    max: 40
+};
+
 // Opacity Constants
 export const DEFAULT_BUBBLE_OPACITY = 0.18;
 export const EXPANDED_BUBBLE_OPACITY = 0.68;

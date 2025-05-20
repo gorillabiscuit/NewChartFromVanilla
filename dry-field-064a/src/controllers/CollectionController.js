@@ -29,6 +29,7 @@ export class CollectionController {
      * @param {string} selectedCollection - The selected collection name
      */
     async handleCollectionChange(selectedCollection) {
+        console.log('[CollectionController] handleCollectionChange called:', selectedCollection);
         if (!selectedCollection) {
             await this.reloadAndPopulateCollections(this.currentWallet, this.currentPeriod);
             return;
@@ -36,29 +37,34 @@ export class CollectionController {
 
         try {
             dispatch({ type: 'SET_STATUS', payload: COLLECTION_STATES.LOADING });
-            // Preserve the current wallet state
             dispatch({ type: 'SET_CURRENT_WALLET', payload: this.currentWallet });
 
-            // Check if collection has loans in current period
-            const hasLoansInCurrentPeriod = this.collectionDropdown.currentLoans.some(loan => 
-                (loan.nftProjectName || 'Unknown Collection') === selectedCollection
-            );
-
-            if (!hasLoansInCurrentPeriod) {
-                // Try to find a period with loans for this collection
-                const period = await CollectionService.findEarliestPeriodWithLoans(
-                    this.currentWallet,
-                    selectedCollection
-                );
-
-                if (period) {
-                    this.currentPeriod = period;
-                    await this.reloadAndPopulateCollections(this.currentWallet, period);
-                    return;
+            let loans = await CollectionService.getCollectionLoans(this.currentWallet, this.currentPeriod, selectedCollection);
+            console.log('[CollectionController] Collection loans:', loans);
+            if (!loans || loans.length === 0) {
+                // Try to find an earlier period with loans
+                const earliestPeriod = await CollectionService.findEarliestPeriodWithLoans(this.currentWallet, selectedCollection);
+                if (earliestPeriod) {
+                    loans = await CollectionService.getCollectionLoans(this.currentWallet, earliestPeriod, selectedCollection);
+                    console.log('[CollectionController] Found earlier period with loans:', earliestPeriod, loans);
                 }
             }
+            if (!loans || loans.length === 0) {
+                dispatch({ type: 'SET_STATUS', payload: COLLECTION_STATES.NO_DATA });
+                console.log('[CollectionController] No collection loans found, status set to no_data');
+                return;
+            }
 
-            // Filter current data
+            this.collectionDropdown.populate(loans);
+            
+            // If current collection selection is still valid, use it
+            const validCollections = loans.map(l => l.nftProjectName || 'Unknown Collection');
+            
+            if (selectedCollection && !validCollections.includes(selectedCollection)) {
+                this.collectionDropdown.setSelectedCollection('');
+            }
+
+            // Filter and draw with current selection
             const filteredLoans = this.collectionDropdown.getFilteredLoans();
             const stats = CollectionService.calculateCollectionStats(filteredLoans);
             
@@ -69,6 +75,7 @@ export class CollectionController {
             );
 
             dispatch({ type: 'SET_STATUS', payload: COLLECTION_STATES.READY });
+            console.log('[CollectionController] Collection loans loaded, status set to ready');
         } catch (error) {
             console.error('Error handling collection change:', error);
             dispatch({ 
@@ -88,43 +95,35 @@ export class CollectionController {
      * @param {number} period - The period in days
      */
     async reloadAndPopulateCollections(wallet, period) {
+        console.log('[CollectionController] reloadAndPopulateCollections called:', wallet, period);
+        dispatch({ type: 'SET_STATUS', payload: COLLECTION_STATES.LOADING });
+        dispatch({ type: 'SET_CURRENT_WALLET', payload: wallet });
         try {
+            const data = await CollectionService.fetchLoans(wallet, period);
+            console.log('[CollectionController] API response:', data);
+            
+            // Update current wallet and period
             this.currentWallet = wallet;
             this.currentPeriod = period;
-
-            dispatch({ type: 'SET_STATUS', payload: COLLECTION_STATES.LOADING });
-            // Preserve the current wallet state
-            dispatch({ type: 'SET_CURRENT_WALLET', payload: wallet });
-
-            const loans = await CollectionService.fetchLoans(wallet, period);
             
-            if (loans && loans.length > 0) {
-                this.collectionDropdown.populate(loans);
-                
-                // If current collection selection is still valid, use it
-                const selectedCollection = this.collectionDropdown.getSelectedCollection();
-                const validCollections = loans.map(l => l.nftProjectName || 'Unknown Collection');
-                
-                if (selectedCollection && !validCollections.includes(selectedCollection)) {
-                    this.collectionDropdown.setSelectedCollection('');
-                }
-
-                // Filter and draw with current selection
-                const filteredLoans = this.collectionDropdown.getFilteredLoans();
-                const stats = CollectionService.calculateCollectionStats(filteredLoans);
-                
-                this.chartController.updateWithFilteredLoans(
-                    filteredLoans,
-                    stats.minUSD,
-                    stats.maxUSD
-                );
-
-                dispatch({ type: 'SET_STATUS', payload: COLLECTION_STATES.READY });
-            } else {
-                this.collectionDropdown.clear();
-                this.chartController.updateWithFilteredLoans([], 0, 0);
+            // Check if we have valid data - data is already an array from the API
+            if (!data || data.length === 0) {
+                console.log('[CollectionController] No data found, status set to no_data');
                 dispatch({ type: 'SET_STATUS', payload: COLLECTION_STATES.NO_DATA });
+                return;
             }
+            
+            // We have data, so populate and update
+            console.log('[CollectionController] Data found, populating dropdown and updating chart');
+            this.collectionDropdown.populate(data);
+            
+            // Update chart with all loans for the wallet/period
+            await this.chartController.updateWithFilteredLoans(data, null, null);
+            
+            // Set status to ready after successful update
+            dispatch({ type: 'SET_STATUS', payload: COLLECTION_STATES.READY });
+            console.log('[CollectionController] Data loaded and chart updated, status set to ready');
+            
         } catch (error) {
             console.error('Error reloading collections:', error);
             dispatch({ type: 'SET_STATUS', payload: COLLECTION_STATES.ERROR });

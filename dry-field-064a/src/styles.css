@@ -93,4 +93,24 @@ canvas {
 .toggle-button.active {
     background: #463D69;
     color: #ffffff;
+}
+
+.centered-message {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    color: #CB2B83;
+    font-size: 20px;
+    background: rgba(34,30,55,0.95);
+    border-radius: 12px;
+    padding: 24px 32px;
+    z-index: 10;
+    text-align: center;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 220px;
+    min-height: 60px;
 } 
