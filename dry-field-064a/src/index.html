@@ -196,7 +196,6 @@
         <div id="collectionContainer"></div>
     </div>
     <div id="walletErrorMsg" style="display: none; color: #CB2B83; font-size: 12px; margin-top: 2px; min-height: 16px; margin-left: 120px;">invalid erc-20 address</div>
-    <div id="loadingIndicator" style="display:none; margin: 20px; font-size: 18px; color: #D14D8A;">Loading...</div>
     <div id="errorIndicator" style="display:none; margin: 20px; font-size: 18px; color: #ff4d4f;"></div>
     <div class="app" id="appContainer">
         <div class="chart-header">
@@ -211,6 +210,7 @@
         </div>
         <div class="chart-wrapper">
             <canvas id="canvas"></canvas>
+            <div id="chartOverlayMessage" class="centered-message" style="display:none;"></div>
             <div id="tooltip"></div>
         </div>
     </div>
@@ -467,6 +467,22 @@
             canvas, 
             newState.allBubbles || allBubbles
         );
+
+        // Overlay message logic
+        const overlayMsg = document.getElementById('chartOverlayMessage');
+        if (overlayMsg) {
+            if (newState.status === 'loading') {
+                overlayMsg.textContent = 'Loading...';
+                overlayMsg.classList.add('white');
+                overlayMsg.style.display = 'flex';
+            } else if (newState.status === 'no_data' || (newState.status === 'error' && (newState.error === 'No loans found for this wallet.' || newState.error === 'No loans found for this period.'))) {
+                overlayMsg.textContent = 'This wallet contains no loans.';
+                overlayMsg.classList.remove('white');
+                overlayMsg.style.display = 'flex';
+            } else {
+                overlayMsg.style.display = 'none';
+            }
+        }
     });
 
     // --- Animation loop ---
@@ -475,15 +491,11 @@
     );
 
     // Loading indicator
-    const loadingIndicator = document.getElementById('loadingIndicator');
     const errorIndicator = document.getElementById('errorIndicator');
     const appContainer = document.getElementById('appContainer');
 
     // Subscribe to loading state
     subscribe((newState) => {
-        if (loadingIndicator) {
-            loadingIndicator.style.display = newState.status === 'loading' ? 'block' : 'none';
-        }
         if (errorIndicator) {
             if (newState.status === 'error') {
                 errorIndicator.style.display = 'block';
@@ -492,9 +504,6 @@
                 errorIndicator.style.display = 'none';
                 errorIndicator.textContent = '';
             }
-        }
-        if (appContainer) {
-            appContainer.style.display = newState.status === 'ready' ? 'block' : 'none';
         }
         // Optionally hide tooltip if not ready
         const tooltip = document.getElementById('tooltip');

@@ -113,4 +113,8 @@ canvas {
     justify-content: center;
     min-width: 220px;
     min-height: 60px;
+}
+
+.centered-message.white {
+    color: #fff !important;
 } 
