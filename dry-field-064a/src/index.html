@@ -501,6 +501,11 @@
                 overlayMsg.style.display = 'none';
             }
         }
+
+        // Dynamic legend update
+        const loans = newState.allBubbles || [];
+        const activeProtocols = new Set(loans.map(b => b.protocol).filter(Boolean));
+        renderProtocolLegend(activeProtocols);
     });
 
     // --- Animation loop ---
@@ -540,10 +545,15 @@
         }
     });
 
-    function renderProtocolLegend() {
+    function renderProtocolLegend(activeProtocols) {
         const legendDiv = document.getElementById('protocolLegend');
         if (!legendDiv) return;
-        const protocols = Object.entries(PROTOCOL_COLORS);
+        const protocols = Object.entries(PROTOCOL_COLORS)
+            .filter(([name]) => activeProtocols.has(name));
+        if (protocols.length === 0) {
+            legendDiv.innerHTML = '';
+            return;
+        }
         legendDiv.innerHTML = protocols.map(([name, color]) => `
             <span class="legend-item">
                 <span class="legend-color" style="background:${color}"></span>
@@ -551,7 +561,6 @@
             </span>
         `).join('');
     }
-    renderProtocolLegend();
     </script>
 </body>
 </html> 
