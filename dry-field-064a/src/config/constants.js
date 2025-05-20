@@ -86,7 +86,6 @@ export const WALLETS = [
 export const COLLECTION_DROPDOWN_WIDTH = 340;
 export const COLLECTION_NAME_MAX_LENGTH = 90;
 export const COLLECTION_DROPDOWN_STYLES = {
-    width: `${COLLECTION_DROPDOWN_WIDTH}px`,
     textAlign: 'left',
     fontFamily: 'monospace'
 };

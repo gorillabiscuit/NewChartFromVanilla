@@ -18,15 +18,43 @@
             min-height: 100vh;
             box-sizing: border-box;
         }
-        .wallet-selector {
+        .dropdown-row {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 12px;
+            width: 100%;
+            max-width: 1200px;
             margin: 20px auto;
+            padding: 0 24px;
+            box-sizing: border-box;
+        }
+        .wallet-selector {
+            margin: 0;
             padding: 8px;
-            width: 300px;
             font-size: 14px;
             border-radius: 8px;
             border: 1px solid rgba(255, 255, 255, 0.2);
             background: #221E37;
             color: #B6B1D5;
+            flex: 1;
+            min-width: 0; /* Allows flex items to shrink below their minimum content size */
+        }
+        #viewWalletBtn {
+            flex: 0 0 120px; /* Fixed width of 120px, don't grow or shrink */
+        }
+        #walletSelect {
+            flex: 1.5; /* Slightly larger than other dropdowns */
+        }
+        #periodSelect {
+            flex: 0.8; /* Slightly smaller than other dropdowns */
+        }
+        #collectionContainer, #protocolContainer {
+            flex: 1.2; /* Equal flex for collection and protocol dropdowns */
+            min-width: 0; /* Allows containers to shrink */
+        }
+        #collectionContainer select, #protocolContainer select {
+            width: 100%;
         }
         .app {
             display: flex;
@@ -178,13 +206,13 @@
     </style>
 </head>
 <body>
-    <div style="display: flex; gap: 12px; align-items: center; margin-bottom: 10px;">
+    <div class="dropdown-row">
         <select id="walletSelect" class="wallet-selector">
             <option value="">Select a wallet...</option>
         </select>
-        <input id="customWalletInput" type="text" placeholder="Enter wallet address" style="height: 32px; width: 260px; border-radius: 8px; border: 1px solid #332C4B; background: #221E37; color: #B6B1D5; font-size: 14px; padding: 0 12px; outline: none;" />
-        <button id="viewWalletBtn" style="height: 32px; border-radius: 8px; font-size: 14px; padding: 0 16px; cursor: pointer; transition: background 0.2s;" disabled>View Wallet</button>
-        <select id="periodSelect" class="wallet-selector" style="width: 120px;">
+        <input id="customWalletInput" type="text" placeholder="Enter wallet address" class="wallet-selector" />
+        <button id="viewWalletBtn" class="wallet-selector" disabled>View Wallet</button>
+        <select id="periodSelect" class="wallet-selector">
             <option value="7">7 days</option>
             <option value="14">14 days</option>
             <option value="30" selected>30 days</option>
@@ -194,6 +222,7 @@
             <option value="365">365 days</option>
         </select>
         <div id="collectionContainer"></div>
+        <div id="protocolContainer"></div>
     </div>
     <div id="walletErrorMsg" style="display: none; color: #CB2B83; font-size: 12px; margin-top: 2px; min-height: 16px; margin-left: 120px;">invalid erc-20 address</div>
     <div id="errorIndicator" style="display:none; margin: 20px; font-size: 18px; color: #ff4d4f;"></div>
