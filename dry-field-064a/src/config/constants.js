@@ -40,7 +40,7 @@ export const EXPANDED_STROKE_OPACITY = 0.8;
 
 // Layout Constants
 export const CHART_HEIGHT_RATIO = 0.88; // Reduce plot area to leave space for x-axis labels
-export const CHART_PADDING_X = 24; // 24px left padding for y-axis
+export const CHART_PADDING_X = 34; // 34px left padding for y-axis (increased by 10px)
 export const CHART_PADDING_TOP_RATIO = 0.03; // 3% top padding
 export const CHART_PADDING_BOTTOM_RATIO = 0.09; // 9% bottom padding for x-axis labels
 

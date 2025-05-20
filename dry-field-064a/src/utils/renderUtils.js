@@ -167,162 +167,107 @@ function drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDI
     let dynamicPaddingX = CHART_PADDING_X;
     const state = getState();
 
-    // Draw Y axis APR ticks, grid lines, and labels (D3-inspired)
-    if (state.useCustomRanges && state.customAprRange) {
-        // Use custom APR range for single loan case
-        const { min: minAPR, max: maxAPR } = state.customAprRange;
-        const labelWidth = getMaxYLabelWidth(ctx, minAPR, maxAPR);
-        dynamicPaddingX = Math.max(CHART_PADDING_X, Math.ceil(labelWidth + 16)); // 16px margin
-
-        let aprTicks = niceLinearTicks(minAPR, maxAPR, 8);
-        if (aprTicks.length > 1) aprTicks = aprTicks.slice(1);
-        aprTicks = aprTicks.filter(tick => Number.isInteger(tick));
-        aprTicks.forEach(tick => {
-            const y = CHART_PADDING_TOP + (CHART_HEIGHT - CHART_PADDING_TOP) * (1 - (tick - minAPR) / ((maxAPR - minAPR) || 1));
-            // Draw grid line
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-            ctx.beginPath();
-            ctx.moveTo(dynamicPaddingX, y);
-            ctx.lineTo(WIDTH, y);
-            ctx.stroke();
-            // Draw tick in left margin
-            ctx.strokeStyle = '#B6B1D5';
-            ctx.beginPath();
-            ctx.moveTo(dynamicPaddingX - TICK_LENGTH, y);
-            ctx.lineTo(dynamicPaddingX, y);
-            ctx.stroke();
-            // Draw label in left margin
-            ctx.fillStyle = '#B6B1D5';
-            ctx.textAlign = 'right';
-            ctx.textBaseline = 'middle';
-            ctx.font = '13px Inter, Arial, sans-serif';
-            ctx.fillText(Math.round(tick) + '%', dynamicPaddingX - TICK_LENGTH - 2, y);
-        });
-    } else if (allBubbles && allBubbles.length > 0) {
-        // Use data-derived APR range for normal case
-        const loans = allBubbles;
-        const minAPR = Math.min(...loans.map(l => l.apr));
-        const maxAPR = Math.max(...loans.map(l => l.apr));
-        const labelWidth = getMaxYLabelWidth(ctx, minAPR, maxAPR);
-        dynamicPaddingX = Math.max(CHART_PADDING_X, Math.ceil(labelWidth + 16)); // 16px margin
-
-        let aprTicks = niceLinearTicks(minAPR, maxAPR, 8);
-        if (aprTicks.length > 1) aprTicks = aprTicks.slice(1);
-        aprTicks = aprTicks.filter(tick => Number.isInteger(tick));
-        aprTicks.forEach(tick => {
-            const y = CHART_PADDING_TOP + (CHART_HEIGHT - CHART_PADDING_TOP) * (1 - (tick - minAPR) / ((maxAPR - minAPR) || 1));
-            // Draw grid line
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-            ctx.beginPath();
-            ctx.moveTo(dynamicPaddingX, y);
-            ctx.lineTo(WIDTH, y);
-            ctx.stroke();
-            // Draw tick in left margin
-            ctx.strokeStyle = '#B6B1D5';
-            ctx.beginPath();
-            ctx.moveTo(dynamicPaddingX - TICK_LENGTH, y);
-            ctx.lineTo(dynamicPaddingX, y);
-            ctx.stroke();
-            // Draw label in left margin
-            ctx.fillStyle = '#B6B1D5';
-            ctx.textAlign = 'right';
-            ctx.textBaseline = 'middle';
-            ctx.font = '13px Inter, Arial, sans-serif';
-            ctx.fillText(Math.round(tick) + '%', dynamicPaddingX - TICK_LENGTH - 2, y);
-        });
+    // --- Y axis APR ticks, grid lines, and labels (D3-inspired) ---
+    let minAPR = 0, maxAPR = 100;
+    if (allBubbles && allBubbles.length > 0) {
+        minAPR = Math.min(...allBubbles.map(l => l.apr));
+        maxAPR = Math.max(...allBubbles.map(l => l.apr));
     }
-    
-    // Draw X axis date ticks and grid lines (D3-inspired)
-    if (state.useCustomRanges && state.customDateRange) {
-        // Use custom date range for single loan case
-        const { min: paddedMinDate, max: paddedMaxDate } = state.customDateRange;
-        const scale = timeScale([paddedMinDate, paddedMaxDate], [dynamicPaddingX, WIDTH - dynamicPaddingX]);
-        const {ticks: dateTicks, format: dateFormat} = niceDateTicks(paddedMinDate, paddedMaxDate, DATE_TICK_COUNT);
-        let lastLabelX = null;
-        let lastLabelWidth = null;
-        const margin = 8;
-        dateTicks.forEach((date, i) => {
-            const x = scale(date.getTime());
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-            ctx.beginPath();
-            ctx.moveTo(x, CHART_PADDING_TOP);
-            ctx.lineTo(x, CHART_HEIGHT);
-            ctx.stroke();
-            ctx.strokeStyle = '#B6B1D5';
-            ctx.beginPath();
-            ctx.moveTo(x, CHART_HEIGHT);
-            ctx.lineTo(x, CHART_HEIGHT + TICK_LENGTH);
-            ctx.stroke();
-            ctx.fillStyle = '#B6B1D5';
-            ctx.textAlign = 'center';
-            const dateStr = dateFormat(date);
-            const labelWidth = ctx.measureText(dateStr).width;
-            let shouldDraw = true;
-            if (lastLabelX !== null) {
-                if (i !== 0 && i !== dateTicks.length - 1) {
-                    if (Math.abs(x - lastLabelX) < (labelWidth + lastLabelWidth) / 2 + margin) {
-                        shouldDraw = false;
-                    }
-                }
-                if (i === dateTicks.length - 1 && lastLabelX !== null) {
-                    if (Math.abs(x - lastLabelX) < (labelWidth + lastLabelWidth) / 2 + margin) {
-                        shouldDraw = true;
-                    }
-                }
-            }
-            if (shouldDraw) {
-                ctx.fillText(dateStr, x, CHART_HEIGHT + TICK_LENGTH + TICK_PADDING + 10);
-                lastLabelX = x;
-                lastLabelWidth = labelWidth;
-            }
-        });
-    } else if (PADDED_MIN_DATE !== null && PADDED_MAX_DATE !== null) {
-        // Use data-derived date range for normal case
-        const paddedMinDate = PADDED_MIN_DATE;
-        const paddedMaxDate = PADDED_MAX_DATE;
-        const scale = timeScale([paddedMinDate, paddedMaxDate], [dynamicPaddingX, WIDTH - dynamicPaddingX]);
-        const {ticks: dateTicks, format: dateFormat} = niceDateTicks(paddedMinDate, paddedMaxDate, DATE_TICK_COUNT);
-        let lastLabelX = null;
-        let lastLabelWidth = null;
-        const margin = 8;
-        dateTicks.forEach((date, i) => {
-            const x = scale(date.getTime());
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-            ctx.beginPath();
-            ctx.moveTo(x, CHART_PADDING_TOP);
-            ctx.lineTo(x, CHART_HEIGHT);
-            ctx.stroke();
-            ctx.strokeStyle = '#B6B1D5';
-            ctx.beginPath();
-            ctx.moveTo(x, CHART_HEIGHT);
-            ctx.lineTo(x, CHART_HEIGHT + TICK_LENGTH);
-            ctx.stroke();
-            ctx.fillStyle = '#B6B1D5';
-            ctx.textAlign = 'center';
-            const dateStr = dateFormat(date);
-            const labelWidth = ctx.measureText(dateStr).width;
-            let shouldDraw = true;
-            if (lastLabelX !== null) {
-                if (i !== 0 && i !== dateTicks.length - 1) {
-                    if (Math.abs(x - lastLabelX) < (labelWidth + lastLabelWidth) / 2 + margin) {
-                        shouldDraw = false;
-                    }
-                }
-                if (i === dateTicks.length - 1 && lastLabelX !== null) {
-                    if (Math.abs(x - lastLabelX) < (labelWidth + lastLabelWidth) / 2 + margin) {
-                        shouldDraw = true;
-                    }
-                }
-            }
-            if (shouldDraw) {
-                ctx.fillText(dateStr, x, CHART_HEIGHT + TICK_LENGTH + TICK_PADDING + 10);
-                lastLabelX = x;
-                lastLabelWidth = labelWidth;
-            }
-        });
-    }
-    
+    const labelWidth = getMaxYLabelWidth(ctx, minAPR, maxAPR);
+    const margin = 8;
+    const yAxisX = CHART_PADDING_X + labelWidth + margin;
+
+    // Generate y-axis ticks (APR values)
+    let aprTicks = niceLinearTicks(minAPR, maxAPR, 8);
+    if (aprTicks.length > 1) aprTicks = aprTicks.slice(1);
+    aprTicks = aprTicks.filter(tick => Number.isInteger(tick));
+    aprTicks.forEach(tick => {
+        const y = CHART_PADDING_TOP + (CHART_HEIGHT - CHART_PADDING_TOP) * (1 - (tick - minAPR) / ((maxAPR - minAPR) || 1));
+        // Draw grid line
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.beginPath();
+        ctx.moveTo(yAxisX, y);
+        ctx.lineTo(WIDTH, y);
+        ctx.stroke();
+        // Draw horizontal tick mark
+        ctx.strokeStyle = '#B6B1D5';
+        ctx.beginPath();
+        ctx.moveTo(yAxisX - TICK_LENGTH, y);
+        ctx.lineTo(yAxisX, y);
+        ctx.stroke();
+        // Draw label
+        ctx.fillStyle = '#B6B1D5';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.font = '13px Inter, Arial, sans-serif';
+        ctx.fillText(Math.round(tick) + '%', yAxisX - TICK_LENGTH - 2, y);
+    });
+
+    // --- X axis date ticks and grid lines ---
+    const minDate = PADDED_MIN_DATE instanceof Date ? PADDED_MIN_DATE : new Date(PADDED_MIN_DATE);
+    const maxDate = PADDED_MAX_DATE instanceof Date ? PADDED_MAX_DATE : new Date(PADDED_MAX_DATE);
+    const ticksObj = getDateTicksWithYAxis(minDate, maxDate, DATE_TICK_COUNT);
+    const dateTicks = ticksObj.ticks;
+    const dateFormat = ticksObj.format;
+
+    // Draw y-axis as a subtle gridline
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.beginPath();
+    ctx.moveTo(yAxisX, CHART_PADDING_TOP);
+    ctx.lineTo(yAxisX, CHART_HEIGHT);
+    ctx.stroke();
+
+    // Draw first x-axis tick/gridline/label at yAxisX
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+    ctx.beginPath();
+    ctx.moveTo(yAxisX, CHART_PADDING_TOP);
+    ctx.lineTo(yAxisX, CHART_HEIGHT);
+    ctx.stroke();
+    ctx.strokeStyle = '#B6B1D5';
+    ctx.beginPath();
+    ctx.moveTo(yAxisX, CHART_HEIGHT);
+    ctx.lineTo(yAxisX, CHART_HEIGHT + TICK_LENGTH);
+    ctx.stroke();
+    ctx.fillStyle = '#B6B1D5';
+    ctx.textAlign = 'center';
+    ctx.fillText(dateFormat(minDate), yAxisX, CHART_HEIGHT + TICK_LENGTH + TICK_PADDING + 10);
+
+    // Draw other ticks as usual, skipping duplicates and those left of yAxisX
+    let lastTickX = null;
+    dateTicks.forEach(tick => {
+        const x = timeScale([minDate, maxDate], [yAxisX, WIDTH - CHART_PADDING_X])(tick.getTime());
+        if (x < yAxisX - 1) return; // skip ticks left of y-axis
+        if (lastTickX !== null && Math.abs(x - lastTickX) < 1) return; // skip overlapping ticks
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.beginPath();
+        ctx.moveTo(x, CHART_PADDING_TOP);
+        ctx.lineTo(x, CHART_HEIGHT);
+        ctx.stroke();
+        ctx.strokeStyle = '#B6B1D5';
+        ctx.beginPath();
+        ctx.moveTo(x, CHART_HEIGHT);
+        ctx.lineTo(x, CHART_HEIGHT + TICK_LENGTH);
+        ctx.stroke();
+        ctx.fillStyle = '#B6B1D5';
+        ctx.textAlign = 'center';
+        ctx.fillText(dateFormat(tick), x, CHART_HEIGHT + TICK_LENGTH + TICK_PADDING + 10);
+        lastTickX = x;
+    });
+
     ctx.restore();
+}
+
+// Utility: Always include a tick at minDate (aligned with y-axis)
+function getDateTicksWithYAxis(minDate, maxDate, count) {
+    const { ticks, format } = niceDateTicks(minDate, maxDate, count);
+    const epsilon = 60 * 1000; // 1 minute in ms
+    const hasMinDate = ticks.some(t => Math.abs(t.getTime() - minDate.getTime()) < epsilon);
+    let newTicks = hasMinDate ? ticks : [minDate, ...ticks];
+    // Sort and deduplicate
+    newTicks = newTicks
+        .sort((a, b) => a - b)
+        .filter((t, i, arr) => i === 0 || Math.abs(t.getTime() - arr[i - 1].getTime()) >= epsilon);
+    return { ticks: newTicks, format };
 }
 
 /**
@@ -351,22 +296,49 @@ function draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_T
     // Clear and setup background
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
     
+    // Fill chart area background
+    ctx.save();
+    ctx.fillStyle = '#1C1A32';
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    ctx.restore();
+
     // Draw top margin (dark for top padding)
-    ctx.fillStyle = '#221E37';
+    ctx.fillStyle = '#1C1A32';
     ctx.fillRect(0, 0, WIDTH, CHART_PADDING_TOP);
     
     // Draw left margin (dark for y-axis labels)
-    ctx.fillStyle = '#221E37';
+    ctx.fillStyle = '#1C1A32';
     ctx.fillRect(0, CHART_PADDING_TOP, CHART_PADDING_X, CHART_HEIGHT - CHART_PADDING_TOP);
     
     // Draw label area (dark)
-    ctx.fillStyle = '#221E37';
+    ctx.fillStyle = '#1C1A32';
     ctx.fillRect(0, CHART_HEIGHT, WIDTH, HEIGHT - CHART_HEIGHT);
     
-    // Draw plot area (dark), starting exactly at the y-axis line
-    ctx.fillStyle = '#221E37';
+    // Draw plot area (main chart area)
+    ctx.fillStyle = '#1C1A32';
     ctx.fillRect(CHART_PADDING_X - TICK_LENGTH, CHART_PADDING_TOP, WIDTH - (CHART_PADDING_X - TICK_LENGTH), CHART_HEIGHT - CHART_PADDING_TOP);
     
+    // --- Repayment warning gradient for first 3 days ---
+    const maxDate = PADDED_MAX_DATE instanceof Date ? PADDED_MAX_DATE : new Date(PADDED_MAX_DATE);
+    const minDate = PADDED_MIN_DATE instanceof Date ? PADDED_MIN_DATE : new Date(PADDED_MIN_DATE);
+    if (!isNaN(maxDate) && !isNaN(minDate)) {
+        const ticksObj = getDateTicksWithYAxis(minDate, maxDate, DATE_TICK_COUNT);
+        const dateTicks = ticksObj.ticks;
+        const gradientStartDate = minDate;
+        const warningEndDate = new Date(minDate.getTime() + 3 * 24 * 60 * 60 * 1000);
+        const x1 = CHART_PADDING_X;
+        const x2 = timeScale([minDate, maxDate], [CHART_PADDING_X, WIDTH - CHART_PADDING_X])(warningEndDate.getTime());
+        if (!isNaN(x1) && !isNaN(x2) && x1 < x2) {
+            const gradient = ctx.createLinearGradient(x1, 0, x2, 0);
+            gradient.addColorStop(0, 'rgba(255,86,48,0.12)');
+            gradient.addColorStop(1, 'rgba(255,86,48,0)');
+            ctx.save();
+            ctx.fillStyle = gradient;
+            ctx.fillRect(x1, CHART_PADDING_TOP, x2 - x1, CHART_HEIGHT - CHART_PADDING_TOP);
+            ctx.restore();
+        }
+    }
+
     // Draw axes and bubbles
     drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
     
