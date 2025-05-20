@@ -32,14 +32,23 @@
         .wallet-selector {
             margin: 0;
             padding: 8px;
-            padding-right: 16px;
+            padding-right: 24px;
             font-size: 14px;
             border-radius: 8px;
             border: 1px solid rgba(255, 255, 255, 0.2);
             background: #221E37;
             color: #B6B1D5;
             flex: 1;
-            min-width: 0; /* Allows flex items to shrink below their minimum content size */
+            min-width: 0;
+        }
+        select.wallet-selector {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url('data:image/svg+xml;utf8,<svg fill="%23B6B1D5" height="16" viewBox="0 0 20 20" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M5.516 7.548a1 1 0 0 1 1.415-.032L10 10.414l3.07-2.898a1 1 0 1 1 1.383 1.447l-3.762 3.55a1 1 0 0 1-1.383 0l-3.762-3.55a1 1 0 0 1-.032-1.415z"/></svg>');
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 18px 18px;
         }
         #viewWalletBtn {
             flex: 0 0 120px; /* Fixed width of 120px, don't grow or shrink */
