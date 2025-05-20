@@ -66,7 +66,7 @@ export const PROTOCOL_COLORS = {
     'X2Y2': '#D1A06F',
     'Zharta': '#5EC6A6',
     'Arcade': '#5B8DB8',
-    'Metastreet': '#A3C8F5',
+    'MetaStreet': '#A3C8F5',
     'Blend': '#B18CFF'
 };
 export const DEFAULT_PROTOCOL_COLOR = '#888888';
