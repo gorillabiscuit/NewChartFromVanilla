@@ -234,10 +234,12 @@ function drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDI
 
     // Draw other ticks as usual, skipping duplicates and those left of yAxisX
     let lastTickX = null;
+    let firstRenderedTickX = null;
     dateTicks.forEach(tick => {
         const x = timeScale([minDate, maxDate], [yAxisX, WIDTH - CHART_PADDING_X])(tick.getTime());
         if (x < yAxisX - 1) return; // skip ticks left of y-axis
         if (lastTickX !== null && Math.abs(x - lastTickX) < 1) return; // skip overlapping ticks
+        if (firstRenderedTickX === null) firstRenderedTickX = x;
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
         ctx.beginPath();
         ctx.moveTo(x, CHART_PADDING_TOP);
@@ -253,6 +255,20 @@ function drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDI
         ctx.fillText(dateFormat(tick), x, CHART_HEIGHT + TICK_LENGTH + TICK_PADDING + 10);
         lastTickX = x;
     });
+
+    // --- Repayment warning gradient ---
+    const warningEndDate = new Date(minDate.getTime() + 3 * 24 * 60 * 60 * 1000);
+    const x1 = firstRenderedTickX !== null ? firstRenderedTickX : yAxisX;
+    const x2 = timeScale([minDate, maxDate], [yAxisX, WIDTH - CHART_PADDING_X])(warningEndDate.getTime());
+    if (!isNaN(x1) && !isNaN(x2) && x1 < x2) {
+        const gradient = ctx.createLinearGradient(x1, 0, x2, 0);
+        gradient.addColorStop(0, 'rgba(255,86,48,0.12)');
+        gradient.addColorStop(1, 'rgba(255,86,48,0)');
+        ctx.save();
+        ctx.fillStyle = gradient;
+        ctx.fillRect(x1, CHART_PADDING_TOP, x2 - x1, CHART_HEIGHT - CHART_PADDING_TOP);
+        ctx.restore();
+    }
 
     ctx.restore();
 }
@@ -318,27 +334,6 @@ function draw(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_T
     ctx.fillStyle = '#1C1A32';
     ctx.fillRect(CHART_PADDING_X - TICK_LENGTH, CHART_PADDING_TOP, WIDTH - (CHART_PADDING_X - TICK_LENGTH), CHART_HEIGHT - CHART_PADDING_TOP);
     
-    // --- Repayment warning gradient for first 3 days ---
-    const maxDate = PADDED_MAX_DATE instanceof Date ? PADDED_MAX_DATE : new Date(PADDED_MAX_DATE);
-    const minDate = PADDED_MIN_DATE instanceof Date ? PADDED_MIN_DATE : new Date(PADDED_MIN_DATE);
-    if (!isNaN(maxDate) && !isNaN(minDate)) {
-        const ticksObj = getDateTicksWithYAxis(minDate, maxDate, DATE_TICK_COUNT);
-        const dateTicks = ticksObj.ticks;
-        const gradientStartDate = minDate;
-        const warningEndDate = new Date(minDate.getTime() + 3 * 24 * 60 * 60 * 1000);
-        const x1 = CHART_PADDING_X;
-        const x2 = timeScale([minDate, maxDate], [CHART_PADDING_X, WIDTH - CHART_PADDING_X])(warningEndDate.getTime());
-        if (!isNaN(x1) && !isNaN(x2) && x1 < x2) {
-            const gradient = ctx.createLinearGradient(x1, 0, x2, 0);
-            gradient.addColorStop(0, 'rgba(255,86,48,0.12)');
-            gradient.addColorStop(1, 'rgba(255,86,48,0)');
-            ctx.save();
-            ctx.fillStyle = gradient;
-            ctx.fillRect(x1, CHART_PADDING_TOP, x2 - x1, CHART_HEIGHT - CHART_PADDING_TOP);
-            ctx.restore();
-        }
-    }
-
     // Draw axes and bubbles
     drawAxes(ctx, WIDTH, HEIGHT, CHART_HEIGHT, CHART_PADDING_X, CHART_PADDING_TOP, allBubbles, PADDED_MIN_DATE, PADDED_MAX_DATE);
     
